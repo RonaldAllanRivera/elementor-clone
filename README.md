@@ -20,6 +20,8 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
 - **Projects & Designs scaffolding**:
   - Eloquent models, migrations, controllers.
   - Form request classes for validation.
+- **Basic Projects UI**:
+  - Authenticated projects index and create screens.
 - **Test suite** (Laravel default feature + auth tests) all passing.
 
 Upcoming in this repository:
@@ -87,11 +89,17 @@ If Breeze is not installed yet (only once):
 ./vendor/bin/sail artisan migrate
 ```
 
-Visit the app:
+Visit the app (default local domain):
 
-- `http://localhost/` – Laravel welcome page / home.
-- `http://localhost/register` – register a user.
-- `http://localhost/login` – login.
+- `http://elementor-clone.test/` – Laravel welcome page / home.
+- `http://elementor-clone.test/register` – register a user.
+- `http://elementor-clone.test/login` – login.
+
+If `elementor-clone.test` does not resolve, add this line to your `/etc/hosts` file:
+
+```text
+127.0.0.1   elementor-clone.test
+```
 
 ### Common Sail commands
 
@@ -114,6 +122,13 @@ Run the full test suite inside Sail:
 ```
 
 Add new tests under the `tests/Feature` and `tests/Unit` directories as you build features.
+
+### Seeded user (optional)
+
+If you run database seeders (for example via `php artisan migrate:refresh --seed`), a default user is created:
+
+- Email: `test@example.com`
+- Password: `password`
 
 ---
 

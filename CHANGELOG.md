@@ -14,9 +14,15 @@ entries are milestone-based until a public release is tagged.
 - Dockerized local development using Laravel Sail (PHP, MySQL, Node).
 - Authentication flow set up with Laravel Breeze (registration, login, profile, password reset).
 - `Project` and `Design` models with migrations, controllers, and form request classes.
+- Basic authenticated Projects index and create views using Blade.
 - PHPUnit test suite running successfully (`artisan test`).
 - Project plan documented in `PLAN.md`.
 - Project-specific `README.md` and this `CHANGELOG.md` following GitHub best practices.
+
+### Changed
+
+- Switched session driver to `file` in `.env` for simpler local development and to avoid early 419 (Page Expired) issues.
+- Configured `APP_URL` to `http://elementor-clone.test` and documented local hosts entry for a friendly Sail domain.
 
 ### Planned
 

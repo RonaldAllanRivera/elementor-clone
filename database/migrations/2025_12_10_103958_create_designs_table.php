@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('designs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('project_id')->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->json('layout_json')->nullable();
+            $table->longText('html')->nullable();
             $table->timestamps();
         });
     }

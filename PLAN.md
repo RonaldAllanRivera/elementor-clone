@@ -185,11 +185,13 @@
 1. Initialize Laravel project and configure Laravel Sail (Docker) for local development.
 2. Run initial migrations and verify the application, login, and registration pages work.
 3. Scaffold `Project` and `Design` models, migrations, controllers, and form request classes.
+4. Define `projects` and `designs` database schema and relationships, including JSON storage for `layout_json` and `html` fields.
+5. Configure file-based sessions and confirm stable login/logout flow.
+6. Add authenticated resource routes for `projects` and `projects.designs` and a basic Projects index/create UI.
 
 **Next focus**
 
-1. Finish `projects` and `designs` database schema (including any fields for templates/layouts as needed).
-2. Implement authenticated CRUD UI for `Projects` and `Designs` (routes, controllers, Blade views).
-3. Add support to upload or paste a mock layout JSON file for a `Design` and persist it.
-4. Implement a simple JSON → HTML mapping service and an HTML preview page for a `Design`.
-5. Initialize the GitHub repository, push the project, and add a basic CI workflow that runs the test suite on every push/PR.
+1. Complete authenticated CRUD UI for `Projects` and `Designs` (show/edit views, designs index/create/edit/show/delete pages).
+2. Add support to upload or paste a mock layout JSON file for a `Design` and persist it.
+3. Implement a simple JSON → HTML mapping service and an HTML preview page for a `Design`.
+4. Initialize the GitHub repository (if not already), push the project, and add a basic CI workflow that runs the test suite on every push/PR.
