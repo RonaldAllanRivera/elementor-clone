@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'figma' => [
+        'token' => env('FIGMA_TOKEN'),
+        'base_url' => env('FIGMA_BASE_URL', 'https://api.figma.com/v1'),
+    ],
+
 ];

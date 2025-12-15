@@ -1,0 +1,34 @@
+{
+  "title": "Fixture",
+  "type": "page",
+  "version": "0.4",
+  "page_settings": [],
+  "content": [
+    {
+      "elType": "container",
+      "isInner": false,
+      "settings": [],
+      "elements": [
+        {
+          "elType": "widget",
+          "widgetType": "heading",
+          "isInner": false,
+          "settings": {
+            "title": "Hello",
+            "header_size": "h1"
+          },
+          "elements": []
+        },
+        {
+          "elType": "widget",
+          "widgetType": "text-editor",
+          "isInner": false,
+          "settings": {
+            "editor": "<p>Body</p>"
+          },
+          "elements": []
+        }
+      ]
+    }
+  ]
+}

@@ -24,7 +24,7 @@ class UpdateDesignRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'layout_json' => ['nullable', 'json'],
+            'figma_url' => ['nullable', 'string', 'url', 'regex:/figma\.com\/(design|file)\//', 'regex:/[?&]node-id=\d+-\d+/', 'max:2000'],
         ];
     }
 }

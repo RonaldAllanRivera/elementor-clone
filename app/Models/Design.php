@@ -14,6 +14,7 @@ class Design extends Model
         'project_id',
         'name',
         'description',
+        'figma_url',
         'layout_json',
         'html',
     ];

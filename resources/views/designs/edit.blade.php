@@ -35,10 +35,10 @@
                         </div>
 
                         <div>
-                            <label for="layout_json" class="block text-sm font-medium text-gray-700">{{ __('Layout JSON') }}</label>
-                            <textarea id="layout_json" name="layout_json" rows="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm font-mono" placeholder="{\n  \"type\": \"section\",\n  \"children\": [...]\n}">{{ old('layout_json', $design->layout_json ? json_encode($design->layout_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '') }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">{{ __('Editing this will regenerate the HTML preview.') }}</p>
-                            @error('layout_json')
+                            <label for="figma_url" class="block text-sm font-medium text-gray-700">{{ __('Figma Frame URL') }}</label>
+                            <input id="figma_url" name="figma_url" type="url" value="{{ old('figma_url', $design->figma_url) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="https://www.figma.com/design/...?...node-id=...">
+                            <p class="mt-1 text-xs text-gray-500">{{ __('Paste a link to a single Frame. The URL must include a node-id parameter.') }}</p>
+                            @error('figma_url')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>

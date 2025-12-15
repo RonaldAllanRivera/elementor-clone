@@ -80,12 +80,15 @@
 - **Features**
   - Define internal `layout schema` (sections, columns, widgets).
   - Implement PHP services to map layout schema → Elementor JSON structure.
-  - UI button: "Export Elementor JSON" for a design.
+  - UI export action for a design with selectable output format:
+    - Classic (section/column/widget)
+    - Container-based (nested containers)
   - Downloadable `.json` file compatible with Elementor import.
 
 - **Deliverables**
   - Unit tests for mapping functions.
   - Example fixture JSONs and expected Elementor outputs.
+  - Feature tests for export download behavior (auth + ownership).
 
 ### Phase 3 – WordPress Plugin
 

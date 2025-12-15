@@ -1,0 +1,7 @@
+{
+  "type": "section",
+  "children": [
+    { "type": "heading", "text": "Hello", "level": 1 },
+    { "type": "text", "text": "Body" }
+  ]
+}

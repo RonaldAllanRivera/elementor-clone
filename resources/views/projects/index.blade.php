@@ -53,6 +53,7 @@
                                         <td class="py-2 text-right space-x-2">
                                             <a href="{{ route('projects.edit', $project) }}" class="text-indigo-600 hover:text-indigo-900 text-xs font-medium">{{ __('Edit') }}</a>
                                             <a href="{{ route('projects.show', $project) }}" class="text-gray-600 hover:text-gray-900 text-xs font-medium">{{ __('View') }}</a>
+                                            <a href="{{ route('projects.designs.index', $project) }}" class="text-gray-600 hover:text-gray-900 text-xs font-medium">{{ __('Designs') }}</a>
                                             <form action="{{ route('projects.destroy', $project) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ __('Delete this project?') }}');">
                                                 @csrf
                                                 @method('DELETE')

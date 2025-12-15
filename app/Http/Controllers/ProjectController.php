@@ -45,6 +45,10 @@ class ProjectController extends Controller
         $data = $request->validated();
         $data['user_id'] = $request->user()->id;
 
+        if (array_key_exists('status', $data) && ($data['status'] === null || $data['status'] === '')) {
+            unset($data['status']);
+        }
+
         $project = Project::create($data);
 
         return redirect()
@@ -82,7 +86,13 @@ class ProjectController extends Controller
     public function update(UpdateProjectRequest $request, Project $project)
     {
         $this->assertOwnership($request, $project);
-        $project->update($request->validated());
+        $data = $request->validated();
+
+        if (array_key_exists('status', $data) && ($data['status'] === null || $data['status'] === '')) {
+            unset($data['status']);
+        }
+
+        $project->update($data);
 
         return redirect()
             ->route('projects.show', $project)

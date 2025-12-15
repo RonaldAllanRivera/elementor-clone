@@ -13,6 +13,32 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
+                <form method="GET" action="{{ route('designs.exportElementor', $design) }}" class="flex items-center space-x-2">
+                    <select name="format" id="elementor-format" class="rounded-md border-gray-300 text-xs">
+                        <option value="classic" {{ request('format') === 'container' ? '' : 'selected' }}>{{ __('Classic') }}</option>
+                        <option value="container" {{ request('format') === 'container' ? 'selected' : '' }}>{{ __('Container') }}</option>
+                    </select>
+                    <span id="elementor-filename" class="hidden sm:inline text-xs text-gray-500"></span>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                        {{ __('Download JSON') }}
+                    </button>
+                    <button
+                        type="submit"
+                        formaction="{{ route('designs.elementorJson', $design) }}"
+                        formtarget="_blank"
+                        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50"
+                    >
+                        {{ __('View/Copy JSON') }}
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ route('designs.importFromFigma', $design) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500" {{ $design->figma_url ? '' : 'disabled' }}>
+                        {{ __('Import from Figma') }}
+                    </button>
+                </form>
+
                 <a href="{{ route('designs.edit', $design) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
                     {{ __('Edit') }}
                 </a>
@@ -22,6 +48,26 @@
             </div>
         </div>
     </x-slot>
+
+    <script>
+        (function () {
+            const select = document.getElementById('elementor-format');
+            const label = document.getElementById('elementor-filename');
+
+            if (!select || !label) return;
+
+            const base = @json(Illuminate\Support\Str::slug($design->name) ?: 'design');
+
+            function update() {
+                const format = select.value === 'container' ? 'Container' : 'Classic';
+                const suffix = select.value === 'container' ? '-container' : '';
+                label.textContent = format + ' • ' + base + '-elementor' + suffix + '.json';
+            }
+
+            select.addEventListener('change', update);
+            update();
+        })();
+    </script>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
@@ -37,6 +83,17 @@
                         <div>
                             <div class="text-sm text-gray-500">{{ __('Description') }}</div>
                             <div class="mt-1 text-sm text-gray-800">{{ $design->description }}</div>
+                        </div>
+                    @endif
+
+                    @if ($design->figma_url)
+                        <div>
+                            <div class="text-sm text-gray-500">{{ __('Figma Frame URL') }}</div>
+                            <div class="mt-1 text-sm">
+                                <a href="{{ $design->figma_url }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900 hover:underline break-all">
+                                    {{ $design->figma_url }}
+                                </a>
+                            </div>
                         </div>
                     @endif
 
