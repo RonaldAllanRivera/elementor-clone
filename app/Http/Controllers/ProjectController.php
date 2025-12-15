@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
+    private function assertOwnership(Request $request, Project $project): void
+    {
+        abort_unless($project->user_id === $request->user()->id, 403);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -52,6 +57,7 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
+        $this->assertOwnership(request(), $project);
         $project->load('designs');
 
         return view('projects.show', [
@@ -64,6 +70,7 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
+        $this->assertOwnership(request(), $project);
         return view('projects.edit', [
             'project' => $project,
         ]);
@@ -74,6 +81,7 @@ class ProjectController extends Controller
      */
     public function update(UpdateProjectRequest $request, Project $project)
     {
+        $this->assertOwnership($request, $project);
         $project->update($request->validated());
 
         return redirect()
@@ -86,6 +94,7 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
+        $this->assertOwnership(request(), $project);
         $project->delete();
 
         return redirect()

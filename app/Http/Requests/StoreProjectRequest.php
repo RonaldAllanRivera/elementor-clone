@@ -23,9 +23,8 @@ class StoreProjectRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:projects,slug'],
             'description' => ['nullable', 'string'],
-            'status' => ['required', 'string', 'in:draft,published'],
+            'status' => ['nullable', 'string', 'in:draft,published'],
         ];
     }
 }

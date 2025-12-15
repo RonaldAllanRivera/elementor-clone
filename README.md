@@ -2,12 +2,12 @@
 
 Convert Figma designs into clean HTML and Elementor‑compatible JSON that can be imported into WordPress.
 
-This repository contains the **core Laravel application** that:
+This repository contains the **Laravel core** for the converter:
 
-- Manages projects and designs.
-- Stores normalized layout JSON.
-- Generates HTML for preview.
-- Will later export Elementor JSON for use in WordPress.
+- Projects + designs management with authenticated CRUD.
+- A normalized `layout_json` format stored per design.
+- Server-side layout JSON → HTML generation with a sandboxed preview.
+- A foundation for future Elementor JSON export and WordPress import workflows.
 
 For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
 
@@ -15,21 +15,23 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
 
 ## Features (current phase)
 
-- **Authentication** with Laravel Breeze (login, register, profile, password reset).
+- **Authentication** with Laravel Breeze (login, profile, password reset).
 - **Dockerized local environment** using Laravel Sail (PHP, MySQL, Node).
 - **Projects & Designs scaffolding**:
   - Eloquent models, migrations, controllers.
   - Form request classes for validation.
-- **Basic Projects UI**:
-  - Authenticated projects index and create screens.
+- **Projects & Designs UI**:
+  - Authenticated CRUD screens for projects and designs.
+  - Paste layout JSON for a design and get an HTML preview (sandboxed iframe).
+- **Automatic project slugs** generated from the project name (unique, regenerated on save).
+- **Single-user setup**: registration disabled, admin user seeded via `.env`.
 - **Test suite** (Laravel default feature + auth tests) all passing.
 
-Upcoming in this repository:
+Next milestones:
 
-- Full CRUD UI for projects and designs.
-- Uploading or pasting layout JSON for each design.
-- Simple JSON → HTML mapping and preview page.
-- Elementor JSON export endpoint.
+- Elementor JSON export from the internal layout schema.
+- WordPress import workflow (plugin or API-based).
+- Figma integration to produce normalized layout JSON.
 
 ---
 
@@ -85,14 +87,14 @@ If Breeze is not installed yet (only once):
 ./vendor/bin/sail composer require laravel/breeze --dev
 ./vendor/bin/sail artisan breeze:install blade
 ./vendor/bin/sail npm install
-./vendor/bin/sail npm run dev
 ./vendor/bin/sail artisan migrate
 ```
+
+Frontend assets are handled by a dedicated Docker service (`vite`) and start automatically with Sail.
 
 Visit the app (default local domain):
 
 - `http://elementor-clone.test/` – Laravel welcome page / home.
-- `http://elementor-clone.test/register` – register a user.
 - `http://elementor-clone.test/login` – login.
 
 If `elementor-clone.test` does not resolve, add this line to your `/etc/hosts` file:
@@ -108,7 +110,12 @@ If `elementor-clone.test` does not resolve, add this line to your `/etc/hosts` f
 ./vendor/bin/sail down       # stop containers
 ./vendor/bin/sail artisan tinker
 ./vendor/bin/sail artisan migrate
-./vendor/bin/sail npm run dev
+```
+
+If you ever need to rebuild production assets (not required for normal dev):
+
+```bash
+./vendor/bin/sail npm run build
 ```
 
 ---
@@ -123,12 +130,14 @@ Run the full test suite inside Sail:
 
 Add new tests under the `tests/Feature` and `tests/Unit` directories as you build features.
 
-### Seeded user (optional)
+### Admin user (seeded)
 
-If you run database seeders (for example via `php artisan migrate:refresh --seed`), a default user is created:
+If you run database seeders (for example via `php artisan migrate:refresh --seed`), an admin user is created (idempotent) using `.env` values:
 
-- Email: `test@example.com`
-- Password: `password`
+- Email: `ADMIN_EMAIL`
+- Password: `ADMIN_PASSWORD`
+
+Note: registration routes are disabled (single-admin system).
 
 ---
 

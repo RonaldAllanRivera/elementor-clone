@@ -21,13 +21,10 @@ class UpdateProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        $projectId = $this->route('project')?->id;
-
         return [
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:projects,slug,' . $projectId],
             'description' => ['nullable', 'string'],
-            'status' => ['required', 'string', 'in:draft,published'],
+            'status' => ['nullable', 'string', 'in:draft,published'],
         ];
     }
 }

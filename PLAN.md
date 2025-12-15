@@ -45,6 +45,8 @@
   - JavaScript – frontend and future Figma plugin.
   - Python – optional later (heuristics/ML if needed).
 - **Frontend**: Blade + TailwindCSS (simple) or Inertia + Vue/React (richer).
+- **Asset pipeline**: Vite is used to compile CSS/JS. In normal usage (including production), assets should be built and served from `public/build`. The Vite dev server is only needed when actively developing frontend assets.
+  - If `public/hot` exists, Laravel will try to load assets from the Vite dev server (typically `:5173`). Remove `public/hot` to force built assets.
 - **Infra**:
   - Docker + docker-compose for local dev.
   - AWS (Fargate or ECS on EC2, or Lightsail/EC2 with Docker).
@@ -58,10 +60,13 @@
 
 - **Features**
   - [x] Basic auth (Laravel Breeze/Fortify).
-  - [ ] CRUD for `Projects` and `Designs` (routes, controllers, Blade views fully wired).
-  - [ ] Upload/import a JSON layout file (manual mock of Figma output).
-  - [ ] Convert stored layout JSON → HTML (simple mapping, no Elementor yet).
-  - [ ] HTML preview page.
+  - [x] CRUD for `Projects` and `Designs` (routes, controllers, Blade views fully wired).
+  - [x] Upload/import a JSON layout file (manual mock of Figma output).
+  - [x] Convert stored layout JSON → HTML (simple mapping, no Elementor yet).
+  - [x] HTML preview page.
+  - [x] Project slugs generated automatically from project name (unique, regenerated on save).
+  - [x] Single-user setup (registration disabled + admin user seeder).
+  - [x] Dockerized Vite dev server for local asset HMR.
 
 - **Deliverables**
   - [x] Laravel app running via Docker locally.
@@ -183,15 +188,18 @@
 **Completed so far**
 
 1. Initialize Laravel project and configure Laravel Sail (Docker) for local development.
-2. Run initial migrations and verify the application, login, and registration pages work.
+2. Run initial migrations and verify the authentication flow.
 3. Scaffold `Project` and `Design` models, migrations, controllers, and form request classes.
 4. Define `projects` and `designs` database schema and relationships, including JSON storage for `layout_json` and `html` fields.
 5. Configure file-based sessions and confirm stable login/logout flow.
-6. Add authenticated resource routes for `projects` and `projects.designs` and a basic Projects index/create UI.
+6. Implement authenticated CRUD UI for `Projects` and nested `Designs`, including HTML preview.
+7. Disable public registration and seed a single admin user via `.env`.
+8. Auto-generate unique project slugs from the project name.
+9. Dockerize the Vite dev server for local development.
 
 **Next focus**
 
-1. Complete authenticated CRUD UI for `Projects` and `Designs` (show/edit views, designs index/create/edit/show/delete pages).
-2. Add support to upload or paste a mock layout JSON file for a `Design` and persist it.
-3. Implement a simple JSON → HTML mapping service and an HTML preview page for a `Design`.
-4. Initialize the GitHub repository (if not already), push the project, and add a basic CI workflow that runs the test suite on every push/PR.
+1. Phase 2: Define the internal layout schema and map it to Elementor JSON.
+2. Add a “Export Elementor JSON” action on designs and download an import-compatible `.json`.
+3. Add fixtures + tests for mapping (unit tests for deterministic outputs).
+4. Add a basic CI workflow that runs the test suite on every push/PR.

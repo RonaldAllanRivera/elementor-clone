@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('projects', ProjectController::class);
     Route::resource('projects.designs', DesignController::class)->shallow();
+    Route::get('designs/{design}/preview', [DesignController::class, 'preview'])->name('designs.preview');
 });
 
 require __DIR__.'/auth.php';
