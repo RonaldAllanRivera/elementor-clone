@@ -52,7 +52,7 @@
                         class="w-full text-xs font-mono bg-gray-50 border rounded-md p-3"
                         rows="24"
                         readonly
-                    >{{ $json }}</textarea>
+                    >{!! $json !!}</textarea>
 
                     <p class="text-xs text-gray-500">
                         {{ __('Tip: download is required for Elementor import. View/Copy is useful for inspection or saving a file manually.') }}

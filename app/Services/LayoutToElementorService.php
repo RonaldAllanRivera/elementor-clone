@@ -86,6 +86,39 @@ class LayoutToElementorService
         return $out;
     }
 
+    private function normalizeContainerRoot(array $elements, string $path): array
+    {
+        if ($elements === []) {
+            return [];
+        }
+
+        if (! $this->isList($elements)) {
+            $elements = [$elements];
+        }
+
+        $out = [];
+        foreach ($elements as $i => $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            if (($element['elType'] ?? null) === 'container') {
+                $out[] = $element;
+                continue;
+            }
+
+            $out[] = [
+                'id' => $this->makeId($path . '.wrap.container.' . $i),
+                'elType' => 'container',
+                'isInner' => false,
+                'settings' => [],
+                'elements' => [$element],
+            ];
+        }
+
+        return $out;
+    }
+
     private function normalizeContent(mixed $layout, string $format): array
     {
         if (empty($layout)) {
@@ -96,6 +129,10 @@ class LayoutToElementorService
 
         if ($format === self::FORMAT_CLASSIC) {
             $elements = $this->normalizeClassicRoot($elements, 'root');
+        }
+
+        if ($format === self::FORMAT_CONTAINER) {
+            $elements = $this->normalizeContainerRoot($elements, 'root');
         }
 
         if ($this->isList($elements)) {
@@ -150,7 +187,7 @@ class LayoutToElementorService
             $children = $node['children'] ?? [];
 
             if ($format === self::FORMAT_CONTAINER) {
-                return $this->containerElement('container', $children, $path, $format, $depth);
+                return $this->containerElement('container', $children, $path, $format, $depth, $this->layoutStyleToContainerSettings($node));
             }
 
             if (is_array($children)
@@ -171,7 +208,7 @@ class LayoutToElementorService
                 return $this->classicSectionFromChildren($children, $path, $format, $depth);
             }
 
-            return $this->containerElement('container', $children, $path, $format, $depth);
+            return $this->containerElement('container', $children, $path, $format, $depth, $this->layoutStyleToContainerSettings($node));
         }
 
         if ($type === 'columns') {
@@ -225,7 +262,7 @@ class LayoutToElementorService
             'id' => $this->makeId($path),
             'elType' => $elType,
             'isInner' => $depth > 0,
-            'settings' => [],
+            'settings' => func_num_args() >= 6 && is_array(func_get_arg(5)) ? func_get_arg(5) : [],
             'elements' => $elements,
         ];
     }
@@ -287,8 +324,48 @@ class LayoutToElementorService
             'id' => $this->makeId($path),
             'elType' => 'container',
             'isInner' => $depth > 0,
-            'settings' => [],
+            'settings' => $this->layoutStyleToContainerSettings($node),
             'elements' => $colElements,
+        ];
+    }
+
+    private function layoutStyleToContainerSettings(array $node): array
+    {
+        $style = $node['style'] ?? null;
+        if (! is_array($style)) {
+            return [];
+        }
+
+        $padding = $style['padding'] ?? null;
+        if (! is_array($padding)) {
+            return [];
+        }
+
+        $t = is_numeric($padding['top'] ?? null) ? (float) $padding['top'] : null;
+        $r = is_numeric($padding['right'] ?? null) ? (float) $padding['right'] : null;
+        $b = is_numeric($padding['bottom'] ?? null) ? (float) $padding['bottom'] : null;
+        $l = is_numeric($padding['left'] ?? null) ? (float) $padding['left'] : null;
+
+        if ($t === null && $r === null && $b === null && $l === null) {
+            return [];
+        }
+
+        $t = (string) (int) round((float) ($t ?? 0));
+        $r = (string) (int) round((float) ($r ?? 0));
+        $b = (string) (int) round((float) ($b ?? 0));
+        $l = (string) (int) round((float) ($l ?? 0));
+
+        $isLinked = $t === $r && $r === $b && $b === $l;
+
+        return [
+            'padding' => [
+                'unit' => 'px',
+                'top' => $t,
+                'right' => $r,
+                'bottom' => $b,
+                'left' => $l,
+                'isLinked' => $isLinked,
+            ],
         ];
     }
 

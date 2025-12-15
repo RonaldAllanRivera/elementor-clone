@@ -54,21 +54,11 @@ class DesignController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreDesignRequest $request, Project $project, LayoutToHtmlService $layoutToHtml)
+    public function store(StoreDesignRequest $request, Project $project)
     {
         $this->assertProjectOwnership($project);
         $data = $request->validated();
         $data['project_id'] = $project->id;
-
-        if (array_key_exists('layout_json', $data)) {
-            if ($data['layout_json'] === null || $data['layout_json'] === '') {
-                $data['layout_json'] = null;
-            } else {
-                $data['layout_json'] = json_decode($data['layout_json'], true);
-            }
-
-            $data['html'] = $layoutToHtml->render($data['layout_json']);
-        }
 
         $design = Design::create($data);
 
@@ -108,21 +98,11 @@ class DesignController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateDesignRequest $request, Design $design, LayoutToHtmlService $layoutToHtml)
+    public function update(UpdateDesignRequest $request, Design $design)
     {
         $design->load('project');
         $this->assertDesignOwnership($design);
         $data = $request->validated();
-
-        if (array_key_exists('layout_json', $data)) {
-            if ($data['layout_json'] === null || $data['layout_json'] === '') {
-                $data['layout_json'] = null;
-            } else {
-                $data['layout_json'] = json_decode($data['layout_json'], true);
-            }
-
-            $data['html'] = $layoutToHtml->render($data['layout_json']);
-        }
 
         $design->update($data);
 
@@ -211,7 +191,13 @@ class DesignController extends Controller
                 ->with('status', 'Figma URL is required before import.');
         }
 
-        $layout = $figma->importFromUrl($design->figma_url);
+        try {
+            $layout = $figma->importFromUrl($design->figma_url);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('designs.show', $design)
+                ->with('status', $e->getMessage());
+        }
 
         $design->layout_json = $layout;
         $design->html = $layoutToHtml->render($layout);

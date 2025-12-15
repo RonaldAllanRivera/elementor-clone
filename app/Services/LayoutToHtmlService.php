@@ -69,12 +69,21 @@ HTML;
             if ($type === 'section' || $type === 'container') {
                 $children = $node['children'] ?? [];
 
-                return '<div class="section">' . $this->renderNode($children) . '</div>';
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<div class="section"' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>'
+                    . $this->renderNode($children)
+                    . '</div>';
             }
 
             if ($type === 'columns') {
                 $columns = $node['columns'] ?? [];
-                $out = '<div class="row">';
+
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style, true);
+
+                $out = '<div class="row"' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>';
                 foreach (is_array($columns) ? $columns : [] as $col) {
                     $out .= '<div class="col">' . $this->renderNode($col) . '</div>';
                 }
@@ -128,5 +137,66 @@ HTML;
         }
 
         return array_keys($value) === range(0, count($value) - 1);
+    }
+
+    private function inlineStyleFromLayoutStyle(array $style, bool $forceRow = false): string
+    {
+        $css = [];
+
+        $direction = is_string($style['direction'] ?? null) ? (string) $style['direction'] : '';
+        if ($forceRow) {
+            $direction = 'row';
+        }
+
+        if ($direction === 'row' || $direction === 'column') {
+            $css[] = 'display:flex';
+            $css[] = 'flex-direction:' . $direction;
+        }
+
+        if (is_numeric($style['gap'] ?? null)) {
+            $css[] = 'gap:' . ((float) $style['gap']) . 'px';
+        }
+
+        $padding = $style['padding'] ?? null;
+        if (is_array($padding)) {
+            $t = is_numeric($padding['top'] ?? null) ? (float) $padding['top'] : 0;
+            $r = is_numeric($padding['right'] ?? null) ? (float) $padding['right'] : 0;
+            $b = is_numeric($padding['bottom'] ?? null) ? (float) $padding['bottom'] : 0;
+            $l = is_numeric($padding['left'] ?? null) ? (float) $padding['left'] : 0;
+
+            if ($t || $r || $b || $l) {
+                $css[] = 'padding:' . $t . 'px ' . $r . 'px ' . $b . 'px ' . $l . 'px';
+            }
+        }
+
+        $justify = is_string($style['justify'] ?? null) ? strtoupper((string) $style['justify']) : '';
+        $align = is_string($style['align'] ?? null) ? strtoupper((string) $style['align']) : '';
+
+        $justifyMap = [
+            'MIN' => 'flex-start',
+            'CENTER' => 'center',
+            'MAX' => 'flex-end',
+            'SPACE_BETWEEN' => 'space-between',
+            'SPACE_AROUND' => 'space-around',
+            'SPACE_EVENLY' => 'space-evenly',
+        ];
+
+        $alignMap = [
+            'MIN' => 'flex-start',
+            'CENTER' => 'center',
+            'MAX' => 'flex-end',
+            'BASELINE' => 'baseline',
+            'STRETCH' => 'stretch',
+        ];
+
+        if (isset($justifyMap[$justify])) {
+            $css[] = 'justify-content:' . $justifyMap[$justify];
+        }
+
+        if (isset($alignMap[$align])) {
+            $css[] = 'align-items:' . $alignMap[$align];
+        }
+
+        return implode(';', $css);
     }
 }

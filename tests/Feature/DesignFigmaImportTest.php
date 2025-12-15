@@ -39,21 +39,36 @@ class DesignFigmaImportTest extends TestCase
 
     public function test_import_from_figma_updates_layout_and_html_for_owner(): void
     {
+        config()->set('services.figma.token', 'test-token');
+
         Http::fake([
-            'api.figma.com/v1/files/*/nodes*' => Http::response([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
                 'nodes' => [
                     '1:2' => [
                         'document' => [
                             'id' => '1:2',
                             'type' => 'FRAME',
                             'name' => 'Frame A',
+                            'layoutMode' => 'HORIZONTAL',
+                            'itemSpacing' => 24,
+                            'paddingTop' => 12,
+                            'paddingRight' => 12,
+                            'paddingBottom' => 12,
+                            'paddingLeft' => 12,
                             'children' => [
                                 [
                                     'id' => '10:1',
                                     'type' => 'TEXT',
                                     'characters' => 'Hello World',
                                     'style' => ['fontSize' => 32],
-                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0],
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 200, 'height' => 40],
+                                ],
+                                [
+                                    'id' => '10:2',
+                                    'type' => 'TEXT',
+                                    'characters' => 'Second Column',
+                                    'style' => ['fontSize' => 20],
+                                    'absoluteBoundingBox' => ['x' => 240, 'y' => 0, 'width' => 200, 'height' => 30],
                                 ],
                             ],
                         ],
@@ -89,7 +104,9 @@ class DesignFigmaImportTest extends TestCase
 
         $this->assertIsArray($design->layout_json);
         $this->assertSame('section', $design->layout_json['type'] ?? null);
+        $this->assertSame('columns', $design->layout_json['children'][0]['type'] ?? null);
         $this->assertNotNull($design->html);
         $this->assertStringContainsString('Hello World', (string) $design->html);
+        $this->assertStringContainsString('Second Column', (string) $design->html);
     }
 }
