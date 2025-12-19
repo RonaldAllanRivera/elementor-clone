@@ -39,6 +39,10 @@
                     </button>
                 </form>
 
+                <a href="{{ route('designs.diagnostics', $design) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
+                    {{ __('Diagnostics') }}
+                </a>
+
                 <a href="{{ route('designs.edit', $design) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50">
                     {{ __('Edit') }}
                 </a>

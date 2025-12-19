@@ -247,6 +247,30 @@ class LayoutToElementorService
             return $this->buttonWidget($label, $href, $path);
         }
 
+        if ($type === 'nav') {
+            $items = $node['items'] ?? [];
+            $items = is_array($items) ? $items : [];
+
+            $html = '<nav>';
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $label = is_string($item['label'] ?? null) ? $item['label'] : '';
+                $href = is_string($item['href'] ?? null) ? $item['href'] : '#';
+
+                if ($label === '') {
+                    continue;
+                }
+
+                $html .= '<a href="' . htmlspecialchars($href, ENT_QUOTES) . '">' . htmlspecialchars($label, ENT_QUOTES) . '</a>';
+            }
+            $html .= '</nav>';
+
+            return $this->htmlWidget($html, $path);
+        }
+
         return [];
     }
 

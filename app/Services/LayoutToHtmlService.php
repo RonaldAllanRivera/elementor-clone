@@ -85,7 +85,11 @@ HTML;
 
                 $out = '<div class="row"' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>';
                 foreach (is_array($columns) ? $columns : [] as $col) {
-                    $out .= '<div class="col">' . $this->renderNode($col) . '</div>';
+                    $colStyle = is_array($col) && is_array($col['style'] ?? null) ? $col['style'] : [];
+                    $colInline = $this->inlineStyleFromLayoutStyle($colStyle);
+                    $out .= '<div class="col"' . ($colInline !== '' ? (' style="' . htmlspecialchars($colInline, ENT_QUOTES) . '"') : '') . '>'
+                        . $this->renderNode($col)
+                        . '</div>';
                 }
                 $out .= '</div>';
 
@@ -136,7 +140,43 @@ HTML;
                 $label = is_string($node['label'] ?? null) ? $node['label'] : 'Button';
                 $href = is_string($node['href'] ?? null) ? $node['href'] : '#';
 
-                return '<a class="button" href="' . htmlspecialchars($href, ENT_QUOTES) . '">' . htmlspecialchars($label, ENT_QUOTES) . '</a>';
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<a class="button" href="' . htmlspecialchars($href, ENT_QUOTES) . '"'
+                    . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '')
+                    . '>' . htmlspecialchars($label, ENT_QUOTES) . '</a>';
+            }
+
+            if ($type === 'nav') {
+                $items = $node['items'] ?? [];
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style, true);
+
+                $out = '<nav' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>';
+
+                foreach (is_array($items) ? $items : [] as $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+
+                    $label = is_string($item['label'] ?? null) ? $item['label'] : '';
+                    $href = is_string($item['href'] ?? null) ? $item['href'] : '#';
+                    $itemStyle = is_array($item['style'] ?? null) ? $item['style'] : [];
+                    $itemInline = $this->inlineStyleFromLayoutStyle($itemStyle);
+
+                    if ($label === '') {
+                        continue;
+                    }
+
+                    $out .= '<a href="' . htmlspecialchars($href, ENT_QUOTES) . '"'
+                        . ($itemInline !== '' ? (' style="' . htmlspecialchars($itemInline, ENT_QUOTES) . '"') : '')
+                        . '>' . htmlspecialchars($label, ENT_QUOTES) . '</a>';
+                }
+
+                $out .= '</nav>';
+
+                return $out;
             }
 
             return '<pre>' . htmlspecialchars(json_encode($node, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '', ENT_QUOTES) . '</pre>';
@@ -166,6 +206,28 @@ HTML;
         if ($direction === 'row' || $direction === 'column') {
             $css[] = 'display:flex';
             $css[] = 'flex-direction:' . $direction;
+        }
+
+        if (is_numeric($style['flexGrow'] ?? null)) {
+            $css[] = 'flex-grow:' . (string) (float) $style['flexGrow'];
+        }
+
+        if (is_numeric($style['flexShrink'] ?? null)) {
+            $css[] = 'flex-shrink:' . (string) (float) $style['flexShrink'];
+        }
+
+        if (is_numeric($style['flexBasis'] ?? null)) {
+            $css[] = 'flex-basis:' . (string) (float) $style['flexBasis'] . 'px';
+        }
+
+        if (is_numeric($style['widthPercent'] ?? null)) {
+            $w = max(0.0, min(100.0, (float) $style['widthPercent']));
+            $css[] = 'flex:0 0 ' . rtrim(rtrim(number_format($w, 3, '.', ''), '0'), '.') . '%';
+            $css[] = 'max-width:' . rtrim(rtrim(number_format($w, 3, '.', ''), '0'), '.') . '%';
+        }
+
+        if (is_numeric($style['minHeightPx'] ?? null)) {
+            $css[] = 'min-height:' . (string) (int) round((float) $style['minHeightPx']) . 'px';
         }
 
         if (is_numeric($style['gap'] ?? null)) {

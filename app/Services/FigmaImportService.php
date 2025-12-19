@@ -166,6 +166,14 @@ class FigmaImportService
             return [];
         }
 
+        if ($this->isButtonLike($node)) {
+            return $this->mapButtonLike($node);
+        }
+
+        if ($this->isNavLike($node)) {
+            return $this->mapNavLike($node);
+        }
+
         $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? $node['layoutMode'] : 'NONE';
         $layoutMode = strtoupper($layoutMode);
 
@@ -178,6 +186,166 @@ class FigmaImportService
         }
 
         return $this->mapNonAutoLayout($node);
+    }
+
+    private function isButtonLike(array $node): bool
+    {
+        $type = isset($node['type']) && is_string($node['type']) ? strtoupper((string) $node['type']) : '';
+        if (! in_array($type, ['FRAME', 'COMPONENT', 'INSTANCE', 'GROUP'], true)) {
+            return false;
+        }
+
+        $children = $this->sortedChildren($node);
+        if ($children === []) {
+            return false;
+        }
+
+        $textChild = null;
+        $nonTextCount = 0;
+        foreach ($children as $child) {
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+            if ($ct === 'TEXT') {
+                $textChild = $child;
+                continue;
+            }
+
+            if (in_array($ct, ['VECTOR', 'BOOLEAN_OPERATION', 'STAR', 'ELLIPSE', 'LINE', 'POLYGON'], true)) {
+                $nonTextCount++;
+                continue;
+            }
+
+            $nonTextCount++;
+        }
+
+        if (! is_array($textChild)) {
+            return false;
+        }
+
+        if ($nonTextCount > 1) {
+            return false;
+        }
+
+        $text = is_string($textChild['characters'] ?? null) ? trim((string) $textChild['characters']) : '';
+        if ($text === '') {
+            return false;
+        }
+
+        $visual = $this->extractVisualStyle($node);
+        $hasVisual = ($visual['backgroundColor'] ?? null) !== null
+            || ($visual['border'] ?? null) !== null
+            || ($visual['borderRadius'] ?? null) !== null
+            || ($visual['boxShadow'] ?? null) !== null;
+
+        $hasPadding = is_numeric($node['paddingTop'] ?? null)
+            || is_numeric($node['paddingRight'] ?? null)
+            || is_numeric($node['paddingBottom'] ?? null)
+            || is_numeric($node['paddingLeft'] ?? null);
+
+        return $hasVisual || $hasPadding;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapButtonLike(array $node): array
+    {
+        $children = $this->sortedChildren($node);
+
+        $textChild = null;
+        foreach ($children as $child) {
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+            if ($ct === 'TEXT') {
+                $textChild = $child;
+                break;
+            }
+        }
+
+        if (! is_array($textChild)) {
+            return [];
+        }
+
+        $label = is_string($textChild['characters'] ?? null) ? trim((string) $textChild['characters']) : '';
+        if ($label === '') {
+            return [];
+        }
+
+        $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? strtoupper((string) $node['layoutMode']) : 'NONE';
+        $direction = $layoutMode === 'VERTICAL' ? 'column' : 'row';
+
+        $style = array_merge(
+            $this->extractLayoutStyle($node, $direction),
+            $this->extractVisualStyle($node),
+            $this->extractTextStyle($textChild)
+        );
+
+        return [
+            'type' => 'button',
+            'label' => $label,
+            'href' => '#',
+            'style' => $style,
+        ];
+    }
+
+    private function isNavLike(array $node): bool
+    {
+        $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? strtoupper((string) $node['layoutMode']) : 'NONE';
+        if ($layoutMode !== 'HORIZONTAL') {
+            return false;
+        }
+
+        $children = $this->sortedChildren($node);
+        if (count($children) < 2) {
+            return false;
+        }
+
+        foreach ($children as $child) {
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+            if ($ct !== 'TEXT') {
+                return false;
+            }
+            $text = is_string($child['characters'] ?? null) ? trim((string) $child['characters']) : '';
+            if ($text === '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapNavLike(array $node): array
+    {
+        $children = $this->sortedChildren($node);
+        $items = [];
+        foreach ($children as $child) {
+            $label = is_string($child['characters'] ?? null) ? trim((string) $child['characters']) : '';
+            if ($label === '') {
+                continue;
+            }
+
+            $items[] = [
+                'label' => $label,
+                'href' => '#',
+                'style' => $this->extractTextStyle($child),
+            ];
+        }
+
+        if ($items === []) {
+            return [];
+        }
+
+        $style = array_merge(
+            $this->extractLayoutStyle($node, 'row'),
+            $this->extractVisualStyle($node)
+        );
+
+        return [
+            'type' => 'nav',
+            'style' => $style,
+            'items' => $items,
+        ];
     }
 
     /**
@@ -215,6 +383,7 @@ class FigmaImportService
      */
     private function mapHorizontalAutoLayout(array $node): array
     {
+        $parentBox = $this->getAbsBox($node);
         $children = $this->sortedChildren($node);
         $columns = [];
         foreach ($children as $i => $child) {
@@ -223,8 +392,11 @@ class FigmaImportService
                 continue;
             }
 
+            $colStyle = $this->extractSizingStyle($child, $parentBox);
+
             $columns[] = [
                 'type' => 'container',
+                'style' => $colStyle !== [] ? $colStyle : null,
                 'children' => [$mapped],
             ];
         }
@@ -241,8 +413,44 @@ class FigmaImportService
         return [
             'type' => 'columns',
             'style' => $style,
-            'columns' => $columns,
+            'columns' => array_map(function (array $col): array {
+                return array_filter($col, fn ($v) => $v !== null);
+            }, $columns),
         ];
+    }
+
+    /**
+     * Extract sizing hints for a child inside a flex row.
+     *
+     * @return array<string, mixed>
+     */
+    private function extractSizingStyle(array $node, array $parentBox): array
+    {
+        $style = [];
+
+        $box = $this->getAbsBox($node);
+        $parentW = (float) ($parentBox['width'] ?? 0);
+
+        $grow = $node['layoutGrow'] ?? null;
+        if (is_numeric($grow) && (float) $grow > 0) {
+            $style['flexGrow'] = (float) $grow;
+            $style['flexBasis'] = 0;
+        } else {
+            $w = (float) ($box['width'] ?? 0);
+            if ($parentW > 0 && $w > 0) {
+                $pct = ($w / $parentW) * 100.0;
+                $style['widthPercent'] = max(0.0, min(100.0, $pct));
+                $style['flexGrow'] = 0;
+                $style['flexShrink'] = 0;
+            }
+        }
+
+        $h = (float) ($box['height'] ?? 0);
+        if ($h > 0) {
+            $style['minHeightPx'] = $h;
+        }
+
+        return $style;
     }
 
     /**

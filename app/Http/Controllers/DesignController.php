@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateDesignRequest;
 use App\Models\Design;
 use App\Models\Project;
 use App\Services\FigmaImportService;
+use App\Services\LayoutDiagnosticsService;
 use App\Services\LayoutToHtmlService;
 use App\Services\LayoutToElementorService;
 use Illuminate\Http\Response;
@@ -135,6 +136,20 @@ class DesignController extends Controller
 
         return response($design->html ?? '<!doctype html><html><body><p>No preview available.</p></body></html>')
             ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    public function diagnostics(Design $design, LayoutDiagnosticsService $diagnostics): View
+    {
+        $design->load('project');
+        $this->assertDesignOwnership($design);
+
+        $report = $diagnostics->analyze($design->layout_json);
+
+        return view('designs.diagnostics', [
+            'design' => $design,
+            'project' => $design->project,
+            'report' => $report,
+        ]);
     }
 
     public function exportElementor(Design $design, LayoutToElementorService $layoutToElementor): StreamedResponse

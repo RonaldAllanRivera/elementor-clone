@@ -21,6 +21,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('projects', ProjectController::class);
     Route::resource('projects.designs', DesignController::class)->shallow();
     Route::get('designs/{design}/preview', [DesignController::class, 'preview'])->name('designs.preview');
+    Route::get('designs/{design}/diagnostics', [DesignController::class, 'diagnostics'])->name('designs.diagnostics');
     Route::get('designs/{design}/export-elementor', [DesignController::class, 'exportElementor'])->name('designs.exportElementor');
     Route::get('designs/{design}/elementor-json', [DesignController::class, 'elementorJson'])->name('designs.elementorJson');
     Route::post('designs/{design}/import-figma', [DesignController::class, 'importFromFigma'])->name('designs.importFromFigma');

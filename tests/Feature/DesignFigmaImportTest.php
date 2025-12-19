@@ -57,6 +57,31 @@ class DesignFigmaImportTest extends TestCase
                             'paddingLeft' => 12,
                             'children' => [
                                 [
+                                    'id' => 'nav:1',
+                                    'type' => 'FRAME',
+                                    'name' => 'Nav',
+                                    'layoutMode' => 'HORIZONTAL',
+                                    'itemSpacing' => 16,
+                                    'children' => [
+                                        [
+                                            'id' => 'nav:1:1',
+                                            'type' => 'TEXT',
+                                            'characters' => 'Shop',
+                                            'style' => ['fontSize' => 14],
+                                            'fills' => [['type' => 'SOLID', 'color' => ['r' => 0, 'g' => 0, 'b' => 0, 'a' => 1]]],
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 40, 'height' => 20],
+                                        ],
+                                        [
+                                            'id' => 'nav:1:2',
+                                            'type' => 'TEXT',
+                                            'characters' => 'On Sale',
+                                            'style' => ['fontSize' => 14],
+                                            'fills' => [['type' => 'SOLID', 'color' => ['r' => 0, 'g' => 0, 'b' => 0, 'a' => 1]]],
+                                            'absoluteBoundingBox' => ['x' => 60, 'y' => 0, 'width' => 60, 'height' => 20],
+                                        ],
+                                    ],
+                                ],
+                                [
                                     'id' => '10:1',
                                     'type' => 'TEXT',
                                     'characters' => 'Hello World',
@@ -69,6 +94,27 @@ class DesignFigmaImportTest extends TestCase
                                     'characters' => 'Second Column',
                                     'style' => ['fontSize' => 20],
                                     'absoluteBoundingBox' => ['x' => 240, 'y' => 0, 'width' => 200, 'height' => 30],
+                                ],
+                                [
+                                    'id' => 'btn:1',
+                                    'type' => 'FRAME',
+                                    'name' => 'Button',
+                                    'layoutMode' => 'HORIZONTAL',
+                                    'paddingTop' => 12,
+                                    'paddingRight' => 18,
+                                    'paddingBottom' => 12,
+                                    'paddingLeft' => 18,
+                                    'fills' => [['type' => 'SOLID', 'color' => ['r' => 0, 'g' => 0, 'b' => 0, 'a' => 1]]],
+                                    'children' => [
+                                        [
+                                            'id' => 'btn:1:1',
+                                            'type' => 'TEXT',
+                                            'characters' => 'Shop Now',
+                                            'style' => ['fontSize' => 14],
+                                            'fills' => [['type' => 'SOLID', 'color' => ['r' => 1, 'g' => 1, 'b' => 1, 'a' => 1]]],
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 80, 'height' => 20],
+                                        ],
+                                    ],
                                 ],
                             ],
                         ],
@@ -108,5 +154,7 @@ class DesignFigmaImportTest extends TestCase
         $this->assertNotNull($design->html);
         $this->assertStringContainsString('Hello World', (string) $design->html);
         $this->assertStringContainsString('Second Column', (string) $design->html);
+        $this->assertStringContainsString('Shop Now', (string) $design->html);
+        $this->assertStringContainsString('On Sale', (string) $design->html);
     }
 }
