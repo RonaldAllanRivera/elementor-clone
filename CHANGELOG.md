@@ -17,6 +17,7 @@ entries are milestone-based until a public release is tagged.
 - Authenticated Projects and Designs CRUD views using Blade.
 - Simple layout JSON → HTML rendering service and a sandboxed preview page.
 - Elementor JSON export for designs (Classic + Container formats), including download and view/copy pages.
+- Elementor JSON export option: Classic (Simple Sections) (`classic_simple`) for editability (splits nested sections into multiple top-level sections).
 - Artisan command to export a design’s Elementor JSON to storage.
 - Figma Frame URL support on designs (`figma_url`) and a one-click “Import from Figma” action.
 - Figma API importer using `FIGMA_TOKEN` to fetch a Frame node and generate `layout_json` + HTML preview.
@@ -39,6 +40,10 @@ entries are milestone-based until a public release is tagged.
 - Disabled public registration routes (single-admin system).
 - Figma API authentication uses `X-Figma-Token` (personal access token header).
 - Elementor container export normalizes root wrapping for consistent imports.
+- Elementor export compatibility and structure:
+  - IDs are 8-character hex strings (aligned with Elementor docs examples).
+  - `page_settings` and empty `settings` are emitted as empty arrays (`[]`) for import compatibility.
+  - Classic export sets `column.isInner=false` and includes a flattening pass to reduce redundant wrapper nesting.
 
 ### Planned
 

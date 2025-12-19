@@ -82,8 +82,13 @@
   - Implement PHP services to map layout schema → Elementor JSON structure.
   - UI export action for a design with selectable output format:
     - Classic (section/column/widget)
+    - Classic (Simple Sections) (section/column/widget, but split into more top-level sections for easier editing)
     - Container-based (nested containers)
   - Downloadable `.json` file compatible with Elementor import.
+
+  - Exporter post-processing (implementation detail)
+    - Flatten redundant wrappers in classic exports to reduce deep nesting.
+    - Simple Sections mode prioritizes editability by lifting eligible nested sections to top-level blocks.
 
 - **Deliverables**
   - Unit tests for mapping functions.
@@ -91,7 +96,7 @@
   - Feature tests for export download behavior (auth + ownership).
 
  - **Status**
-   - Completed (download + view/copy UI, classic + container exports, fixtures + unit/feature tests).
+   - Completed (download + view/copy UI, classic + classic simple + container exports, fixtures + unit/feature tests).
 
 ### Phase 3 – Figma Integration (API Import)
 

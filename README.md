@@ -25,9 +25,10 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
   - Import from Figma via a Frame URL.
   - HTML preview (sandboxed iframe) generated from the internal `layout_json`.
 - **Elementor JSON export**:
-  - Download Elementor-compatible JSON in two formats:
-    - Classic (section/column/widget)
-    - Container-based (nested containers)
+  - Download Elementor-compatible JSON in multiple formats:
+    - Classic (`classic`) (section/column/widget)
+    - Classic (Simple Sections) (`classic_simple`) (section/column/widget, but split into more top-level sections for easier editing)
+    - Container-based (`container`) (nested containers)
   - View/copy JSON inline.
 - **Automatic project slugs** generated from the project name (unique, regenerated on save).
 - **Single-user setup**: registration disabled, admin user seeded via `.env`.
@@ -161,6 +162,35 @@ If you run database seeders (for example via `php artisan migrate:refresh --seed
 - Password: `ADMIN_PASSWORD`
 
 Note: registration routes are disabled (single-admin system).
+
+---
+
+## Elementor Export Notes (compatibility + editability)
+
+### Supported formats
+
+- **Classic (`classic`)**
+  - Goal: simplest valid Elementor structure.
+  - Uses a post-pass to flatten redundant wrappers (common in imported Figma trees).
+
+- **Classic (Simple Sections) (`classic_simple`)**
+  - Goal: editability and long-term maintainability.
+  - Lifts eligible nested “inner sections” into multiple top-level sections (then flattens redundant wrappers).
+  - Tradeoff: can produce a larger JSON if the source layout has many nested frames.
+
+- **Container (`container`)**
+  - Goal: modern Elementor container layout structure.
+
+### Schema decisions (kept intentionally strict)
+
+- **IDs**
+  - Element `id` values are 8-character hex strings (derived from `md5(...)`) to match Elementor’s documented examples.
+
+- **Empty settings**
+  - `page_settings` and empty `settings` are emitted as empty arrays (`[]`) following Elementor docs examples.
+
+- **Classic nesting flags**
+  - In classic export, `column.isInner` is `false` (also aligned with Elementor’s documented “traditional structure”).
 
 ---
 

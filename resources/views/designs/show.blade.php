@@ -96,6 +96,120 @@
                         </div>
                     @endif
 
+                    <details class="bg-gray-50 border rounded-md p-4">
+                        <summary class="cursor-pointer text-sm font-medium text-gray-800">{{ __('Why “Classic” looks cleaner than “Classic (Simple Sections)”') }}</summary>
+                        <div class="mt-3 text-sm text-gray-700 space-y-3">
+                            <div>
+                                <div class="font-semibold">{{ __('1) Classic export is “minimal valid Elementor structure”') }}</div>
+                                <div class="mt-1">
+                                    {{ __('The classic exporter is optimized to produce the smallest valid tree:') }}
+                                </div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Top-level: section') }}</div>
+                                    <div>{{ __('Inside: column') }}</div>
+                                    <div>{{ __('Inside: widgets (and only the minimum necessary inner wrappers)') }}</div>
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('Then we also run a flattening pass that removes the most common redundant pattern:') }}
+                                </div>
+                                <div class="mt-2 text-xs font-mono bg-white border rounded p-2 overflow-auto">
+                                    <div>column -> inner section (empty) -> column (empty)</div>
+                                    <div>becomes</div>
+                                    <div>column -> (widgets…)</div>
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('So even if your Figma/layout JSON contains lots of nested “frames”, the classic output tends to collapse them, which is why it looks simpler/cleaner.') }}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('2) Classic (Simple Sections) intentionally creates “more blocks”') }}</div>
+                                <div class="mt-1">
+                                    {{ __('Simple Sections Mode is the opposite goal: it tries to make the page easier to edit by turning nested groups into separate top-level sections.') }}
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('To do that safely, it does two things that can increase size:') }}
+                                </div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Lift each inner section into the top level') }}</div>
+                                    <div class="text-gray-600">{{ __('If your design has many nested frames/sections (very common in Figma), it will create many top-level blocks.') }}</div>
+                                    <div class="pt-2">{{ __('Wrap “leftover widgets” into their own top-level section') }}</div>
+                                    <div class="text-gray-600">{{ __('When content exists between those inner sections, it can’t just leave them floating at root.') }}</div>
+                                    <div class="text-gray-600">{{ __('So it creates a new wrapper: section -> column -> (those widgets)') }}</div>
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('So if your Figma structure is very granular (lots of frames for alignment), Simple Sections Mode will “promote” all those frames into editable Elementor blocks — which can look more confusing, not less.') }}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('3) The key tradeoff') }}</div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Classic: cleaner JSON + fewer Elementor Navigator items, but blocks may be “merged” together.') }}</div>
+                                    <div>{{ __('Classic (Simple Sections): more “editable blocks”, but if the source design has many nested frames, you’ll see many sections and wrappers.') }}</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('4) Why this happens with “senior designer best practice”') }}</div>
+                                <div class="mt-1">
+                                    {{ __('A senior Elementor designer typically creates sections based on semantic page blocks (Hero, Header, Products, Testimonials…), not based on every internal alignment group.') }}
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('Right now, Simple Sections Mode uses a structural signal (“nested section boundaries”) rather than semantic intent (“this frame is a major block”). That’s why it can oversplit.') }}
+                                </div>
+                                <div class="mt-2">
+                                    {{ __('To make Simple Sections Mode feel like senior best-practice automatically, we’d need smarter rules like:') }}
+                                </div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Only split when a frame has a background fill') }}</div>
+                                    <div>{{ __('Or when it spans near full width') }}</div>
+                                    <div>{{ __('Or when it’s a vertical stack of major blocks with large spacing') }}</div>
+                                    <div>{{ __('Or when the node name matches patterns (“Hero”, “Header”, “Section”, etc.)') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="bg-gray-50 border rounded-md p-4">
+                        <summary class="cursor-pointer text-sm font-medium text-gray-800">{{ __('When and why should I use “Container” selection?') }}</summary>
+                        <div class="mt-3 text-sm text-gray-700 space-y-3">
+                            <div>
+                                <div class="font-semibold">{{ __('Use “Container” if…') }}</div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('You already build pages in Elementor using Flexbox Containers (modern layout system).') }}</div>
+                                    <div>{{ __('You want better responsive control (flex direction, alignment, wrapping, spacing).') }}</div>
+                                    <div>{{ __('You expect to nest layout blocks often (container-in-container is a first-class pattern).') }}</div>
+                                    <div>{{ __('You want a structure aligned with Elementor’s newer direction (containers vs legacy sections/columns).') }}</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('Why “Container” can be better') }}</div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Closer match to Figma Auto Layout (flexbox-style layout concepts).') }}</div>
+                                    <div>{{ __('Often easier to adjust spacing/alignment without fighting the classic column system.') }}</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('When you should NOT use “Container”') }}</div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Your site/workflow still uses classic Sections/Columns and you want the simplest navigator tree.') }}</div>
+                                    <div>{{ __('Your Elementor setup does not have containers enabled (Flexbox Container feature).') }}</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="font-semibold">{{ __('Rule of thumb') }}</div>
+                                <div class="mt-2 space-y-1">
+                                    <div>{{ __('Choose Classic for simpler structure and faster manual editing.') }}</div>
+                                    <div>{{ __('Choose Container for modern flexbox layouts and better responsive behavior.') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
                     @if ($design->figma_url)
                         <div>
                             <div class="text-sm text-gray-500">{{ __('Figma Frame URL') }}</div>
