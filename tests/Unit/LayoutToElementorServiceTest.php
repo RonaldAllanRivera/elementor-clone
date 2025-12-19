@@ -145,4 +145,36 @@ class LayoutToElementorServiceTest extends TestCase
         $this->assertSame('container', $root['elements'][0]['elType']);
         $this->assertSame('container', $root['elements'][1]['elType']);
     }
+
+    public function test_export_classic_simple_splits_nested_sections_into_multiple_top_level_sections(): void
+    {
+        $service = new LayoutToElementorService();
+
+        $layout = [
+            'type' => 'section',
+            'children' => [
+                [
+                    'type' => 'section',
+                    'children' => [
+                        ['type' => 'heading', 'text' => 'Block A', 'level' => 2],
+                    ],
+                ],
+                [
+                    'type' => 'section',
+                    'children' => [
+                        ['type' => 'heading', 'text' => 'Block B', 'level' => 2],
+                    ],
+                ],
+            ],
+        ];
+
+        $payload = $service->export($layout, 'Simple', LayoutToElementorService::FORMAT_CLASSIC_SIMPLE);
+
+        $this->assertIsArray($payload['content']);
+        $this->assertCount(2, $payload['content']);
+        $this->assertSame('section', $payload['content'][0]['elType']);
+        $this->assertFalse($payload['content'][0]['isInner']);
+        $this->assertSame('section', $payload['content'][1]['elType']);
+        $this->assertFalse($payload['content'][1]['isInner']);
+    }
 }

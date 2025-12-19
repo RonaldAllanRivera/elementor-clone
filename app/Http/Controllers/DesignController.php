@@ -169,6 +169,10 @@ class DesignController extends Controller
             $filename .= '-container';
         }
 
+        if ((string) $format === LayoutToElementorService::FORMAT_CLASSIC_SIMPLE) {
+            $filename .= '-simple';
+        }
+
         $filename .= '.json';
 
         return response()->streamDownload(function () use ($json): void {

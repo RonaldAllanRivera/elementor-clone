@@ -26,6 +26,9 @@ Artisan::command('design:export-elementor {designId} {--format=classic} {--outpu
     if ($output === '') {
         $slug = Str::slug($design->name) ?: ('design-' . $design->id);
         $suffix = ($format === LayoutToElementorService::FORMAT_CONTAINER) ? '-container' : '';
+        if ($format === LayoutToElementorService::FORMAT_CLASSIC_SIMPLE) {
+            $suffix = '-simple';
+        }
         $output = 'elementor-exports/' . $slug . '-elementor' . $suffix . '.json';
     }
 

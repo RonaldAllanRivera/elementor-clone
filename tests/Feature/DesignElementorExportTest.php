@@ -144,6 +144,52 @@ class DesignElementorExportTest extends TestCase
         $this->assertSame('container', $payload['content'][0]['elType']);
     }
 
+    public function test_export_elementor_downloads_classic_simple_format_for_owner(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'layout_json' => [
+                'type' => 'section',
+                'children' => [
+                    [
+                        'type' => 'section',
+                        'children' => [
+                            ['type' => 'heading', 'text' => 'Block A', 'level' => 2],
+                        ],
+                    ],
+                    [
+                        'type' => 'section',
+                        'children' => [
+                            ['type' => 'heading', 'text' => 'Block B', 'level' => 2],
+                        ],
+                    ],
+                ],
+            ],
+            'html' => null,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('designs.exportElementor', $design, absolute: false) . '?format=classic_simple');
+
+        $response->assertOk();
+        $this->assertStringContainsString('my-design-elementor-simple.json', (string) $response->headers->get('content-disposition'));
+
+        $payload = json_decode($response->streamedContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertCount(2, $payload['content']);
+    }
+
     public function test_elementor_json_view_requires_authentication(): void
     {
         $user = User::factory()->create();

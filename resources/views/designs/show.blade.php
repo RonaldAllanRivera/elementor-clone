@@ -15,7 +15,8 @@
             <div class="flex items-center space-x-2">
                 <form method="GET" action="{{ route('designs.exportElementor', $design) }}" class="flex items-center space-x-2">
                     <select name="format" id="elementor-format" class="rounded-md border-gray-300 text-xs">
-                        <option value="classic" {{ request('format') === 'container' ? '' : 'selected' }}>{{ __('Classic') }}</option>
+                        <option value="classic" {{ in_array(request('format'), [null, '', 'classic'], true) ? 'selected' : '' }}>{{ __('Classic') }}</option>
+                        <option value="classic_simple" {{ request('format') === 'classic_simple' ? 'selected' : '' }}>{{ __('Classic (Simple Sections)') }}</option>
                         <option value="container" {{ request('format') === 'container' ? 'selected' : '' }}>{{ __('Container') }}</option>
                     </select>
                     <span id="elementor-filename" class="hidden sm:inline text-xs text-gray-500"></span>
@@ -63,8 +64,13 @@
             const base = @json(Illuminate\Support\Str::slug($design->name) ?: 'design');
 
             function update() {
-                const format = select.value === 'container' ? 'Container' : 'Classic';
-                const suffix = select.value === 'container' ? '-container' : '';
+                const format = select.value === 'container'
+                    ? 'Container'
+                    : (select.value === 'classic_simple' ? 'Classic (Simple)' : 'Classic');
+
+                const suffix = select.value === 'container'
+                    ? '-container'
+                    : (select.value === 'classic_simple' ? '-simple' : '');
                 label.textContent = format + ' • ' + base + '-elementor' + suffix + '.json';
             }
 

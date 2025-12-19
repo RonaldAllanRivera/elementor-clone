@@ -5,6 +5,7 @@ namespace App\Services;
 class LayoutToElementorService
 {
     public const FORMAT_CLASSIC = 'classic';
+    public const FORMAT_CLASSIC_SIMPLE = 'classic_simple';
     public const FORMAT_CONTAINER = 'container';
 
     public function export(mixed $layout, string $title = 'Template Title', string $format = self::FORMAT_CLASSIC): array
@@ -129,6 +130,13 @@ class LayoutToElementorService
 
         if ($format === self::FORMAT_CLASSIC) {
             $elements = $this->normalizeClassicRoot($elements, 'root');
+            $elements = $this->flattenClassicContent($elements);
+        }
+
+        if ($format === self::FORMAT_CLASSIC_SIMPLE) {
+            $elements = $this->normalizeClassicRoot($elements, 'root');
+            $elements = $this->splitClassicIntoSimpleSections($elements);
+            $elements = $this->flattenClassicContent($elements);
         }
 
         if ($format === self::FORMAT_CONTAINER) {
@@ -140,6 +148,225 @@ class LayoutToElementorService
         }
 
         return [$elements];
+    }
+
+    private function splitClassicIntoSimpleSections(array $content): array
+    {
+        $out = [];
+
+        foreach ($content as $i => $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            if (($element['elType'] ?? null) !== 'section' || ($element['isInner'] ?? null) !== false) {
+                $out[] = $element;
+                continue;
+            }
+
+            $split = $this->splitTopLevelClassicSection($element, 'simple.' . $i);
+            foreach ($split as $s) {
+                $out[] = $s;
+            }
+        }
+
+        return $out;
+    }
+
+    private function splitTopLevelClassicSection(array $section, string $seed): array
+    {
+        if (($section['settings'] ?? null) !== []) {
+            return [$section];
+        }
+
+        $cols = $section['elements'] ?? null;
+        if (! is_array($cols) || ! $this->isList($cols) || count($cols) !== 1) {
+            return [$section];
+        }
+
+        $col = $cols[0];
+        if (! is_array($col) || ($col['elType'] ?? null) !== 'column') {
+            return [$section];
+        }
+
+        $children = $col['elements'] ?? null;
+        if (! is_array($children) || ! $this->isList($children) || $children === []) {
+            return [$section];
+        }
+
+        $out = [];
+        $buffer = [];
+
+        foreach ($children as $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+
+            if (($child['elType'] ?? null) === 'section' && ($child['isInner'] ?? null) === true) {
+                if ($buffer !== []) {
+                    $out[] = $this->wrapClassicElementsAsTopLevelSection($buffer, $seed . '.buf.' . count($out));
+                    $buffer = [];
+                }
+
+                $child['isInner'] = false;
+                $out[] = $child;
+                continue;
+            }
+
+            $buffer[] = $child;
+        }
+
+        if ($buffer !== []) {
+            $out[] = $this->wrapClassicElementsAsTopLevelSection($buffer, $seed . '.buf.' . count($out));
+        }
+
+        // Only replace the section if we actually produced more than one editable block.
+        if (count($out) <= 1) {
+            return [$section];
+        }
+
+        return $out;
+    }
+
+    private function wrapClassicElementsAsTopLevelSection(array $elements, string $seed): array
+    {
+        $sectionId = $this->makeSyntheticId('section.' . $seed);
+        $columnId = $this->makeSyntheticId('column.' . $seed);
+
+        return [
+            'id' => $sectionId,
+            'elType' => 'section',
+            'isInner' => false,
+            'settings' => [],
+            'elements' => [
+                [
+                    'id' => $columnId,
+                    'elType' => 'column',
+                    'isInner' => false,
+                    'settings' => [],
+                    'elements' => $elements,
+                ],
+            ],
+        ];
+    }
+
+    private function makeSyntheticId(string $seed): string
+    {
+        return substr(md5($seed), 0, 8);
+    }
+
+    private function flattenClassicContent(array $content): array
+    {
+        $out = [];
+        foreach ($content as $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            $out[] = $this->flattenClassicElement($element);
+        }
+
+        return $out;
+    }
+
+    private function flattenClassicElement(array $element): array
+    {
+        $children = $element['elements'] ?? null;
+        if (! is_array($children) || ! $this->isList($children)) {
+            return $element;
+        }
+
+        // Columns are where we most often get redundant wrappers: column -> inner section -> column.
+        if (($element['elType'] ?? null) === 'column') {
+            $element['elements'] = $this->flattenClassicColumnChildren($children);
+            return $element;
+        }
+
+        $outChildren = [];
+        foreach ($children as $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+
+            $outChildren[] = $this->flattenClassicElement($child);
+        }
+
+        $element['elements'] = $outChildren;
+
+        return $element;
+    }
+
+    private function flattenClassicColumnChildren(array $children): array
+    {
+        $out = [];
+
+        foreach ($children as $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+
+            $child = $this->flattenClassicElement($child);
+
+            if ($this->isRedundantClassicInnerSection($child)) {
+                $innerColumn = $child['elements'][0] ?? null;
+                $grandChildren = is_array($innerColumn) ? ($innerColumn['elements'] ?? null) : null;
+                $grandChildren = is_array($grandChildren) && $this->isList($grandChildren) ? $grandChildren : [];
+
+                foreach ($grandChildren as $grandChild) {
+                    if (! is_array($grandChild)) {
+                        continue;
+                    }
+
+                    $out[] = $this->flattenClassicElement($grandChild);
+                }
+
+                continue;
+            }
+
+            $out[] = $child;
+        }
+
+        return $out;
+    }
+
+    private function isRedundantClassicInnerSection(array $element): bool
+    {
+        if (($element['elType'] ?? null) !== 'section') {
+            return false;
+        }
+
+        if (($element['isInner'] ?? null) !== true) {
+            return false;
+        }
+
+        if (($element['settings'] ?? null) !== []) {
+            return false;
+        }
+
+        $elements = $element['elements'] ?? null;
+        if (! is_array($elements) || ! $this->isList($elements) || count($elements) !== 1) {
+            return false;
+        }
+
+        $col = $elements[0];
+        if (! is_array($col)) {
+            return false;
+        }
+
+        if (($col['elType'] ?? null) !== 'column') {
+            return false;
+        }
+
+        if (($col['settings'] ?? null) !== []) {
+            return false;
+        }
+
+        // In Elementor docs, classic columns are not marked as inner.
+        if (($col['isInner'] ?? null) !== false) {
+            return false;
+        }
+
+        return true;
     }
 
     private function mapNode(mixed $node, string $path, string $format, int $depth): array
@@ -485,6 +712,10 @@ class LayoutToElementorService
 
         if ($format === self::FORMAT_CONTAINER) {
             return self::FORMAT_CONTAINER;
+        }
+
+        if ($format === self::FORMAT_CLASSIC_SIMPLE) {
+            return self::FORMAT_CLASSIC_SIMPLE;
         }
 
         return self::FORMAT_CLASSIC;
