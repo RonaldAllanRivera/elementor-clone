@@ -11,7 +11,7 @@
       "elements": [
         {
           "elType": "column",
-          "isInner": true,
+          "isInner": false,
           "settings": [],
           "elements": [
             {

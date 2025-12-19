@@ -19,15 +19,15 @@ class LayoutToHtmlService
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; padding: 24px; background: #fff; color: #111827; }
-    .container { max-width: 960px; margin: 0 auto; }
-    .section { margin-bottom: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 10px; }
-    .row { display: flex; gap: 16px; }
-    .col { flex: 1; }
-    h1,h2,h3 { margin: 0 0 12px; }
-    p { margin: 0 0 12px; line-height: 1.6; }
-    a.button { display: inline-block; padding: 10px 14px; border-radius: 8px; background: #4f46e5; color: white; text-decoration: none; font-weight: 600; }
-    img { max-width: 100%; height: auto; border-radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; padding: 0; background: #fff; color: #111827; }
+    .container { width: 100%; max-width: none; margin: 0; padding: 0; }
+    .section { margin: 0; padding: 0; border: 0; }
+    .row { display: flex; }
+    h1,h2,h3,p { margin: 0; font-size: inherit; font-weight: inherit; line-height: inherit; }
+    a { color: inherit; text-decoration: none; }
+    a.button { display: inline-flex; align-items: center; justify-content: center; }
+    img { max-width: 100%; height: auto; display: block; }
     pre { white-space: pre-wrap; word-break: break-word; background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 10px; overflow: auto; }
 </style>
 </head>
@@ -86,9 +86,17 @@ HTML;
                 $out = '<div class="row"' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>';
                 foreach (is_array($columns) ? $columns : [] as $col) {
                     $colStyle = is_array($col) && is_array($col['style'] ?? null) ? $col['style'] : [];
+
+                    if (! isset($colStyle['widthPercent']) && ! isset($colStyle['flexGrow']) && ! isset($colStyle['flexBasis'])) {
+                        $colStyle['flexGrow'] = 1;
+                        $colStyle['flexBasis'] = 0;
+                    }
+
                     $colInline = $this->inlineStyleFromLayoutStyle($colStyle);
+                    $children = is_array($col) ? ($col['children'] ?? null) : null;
+
                     $out .= '<div class="col"' . ($colInline !== '' ? (' style="' . htmlspecialchars($colInline, ENT_QUOTES) . '"') : '') . '>'
-                        . $this->renderNode($col)
+                        . $this->renderNode(is_array($children) ? $children : $col)
                         . '</div>';
                 }
                 $out .= '</div>';
@@ -264,6 +272,7 @@ HTML;
 
         $justify = is_string($style['justify'] ?? null) ? strtoupper((string) $style['justify']) : '';
         $align = is_string($style['align'] ?? null) ? strtoupper((string) $style['align']) : '';
+        $alignSelf = is_string($style['alignSelf'] ?? null) ? strtoupper((string) $style['alignSelf']) : '';
 
         $justifyMap = [
             'MIN' => 'flex-start',
@@ -288,6 +297,10 @@ HTML;
 
         if (isset($alignMap[$align])) {
             $css[] = 'align-items:' . $alignMap[$align];
+        }
+
+        if (isset($alignMap[$alignSelf])) {
+            $css[] = 'align-self:' . $alignMap[$alignSelf];
         }
 
         if (is_string($style['fontFamily'] ?? null) && $style['fontFamily'] !== '') {

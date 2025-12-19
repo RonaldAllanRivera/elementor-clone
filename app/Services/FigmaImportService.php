@@ -136,8 +136,7 @@ class FigmaImportService
                 return [];
             }
 
-            $style = $node['style'] ?? null;
-            $fontSize = is_array($style) ? (float) ($style['fontSize'] ?? 0) : 0;
+            $fontSize = $this->extractTextFontSize($node);
 
             $layoutStyle = $this->extractTextStyle($node);
 
@@ -450,6 +449,11 @@ class FigmaImportService
             $style['minHeightPx'] = $h;
         }
 
+        $layoutAlign = isset($node['layoutAlign']) && is_string($node['layoutAlign']) ? strtoupper((string) $node['layoutAlign']) : '';
+        if ($layoutAlign !== '') {
+            $style['alignSelf'] = $layoutAlign;
+        }
+
         return $style;
     }
 
@@ -586,6 +590,36 @@ class FigmaImportService
         }
 
         return $out;
+    }
+
+    private function extractTextFontSize(array $node): float
+    {
+        $style = $node['style'] ?? null;
+        if (is_array($style) && is_numeric($style['fontSize'] ?? null)) {
+            $size = (float) $style['fontSize'];
+            if ($size > 0) {
+                return $size;
+            }
+        }
+
+        $overrideTable = $node['styleOverrideTable'] ?? null;
+        if (! is_array($overrideTable) || $overrideTable === []) {
+            return 0.0;
+        }
+
+        foreach ($overrideTable as $override) {
+            if (! is_array($override)) {
+                continue;
+            }
+            if (is_numeric($override['fontSize'] ?? null)) {
+                $size = (float) $override['fontSize'];
+                if ($size > 0) {
+                    return $size;
+                }
+            }
+        }
+
+        return 0.0;
     }
 
     /**
@@ -740,6 +774,13 @@ class FigmaImportService
         $color = $this->extractSolidFillCss($node['fills'] ?? null);
         if ($color !== null) {
             $out['color'] = $color;
+        }
+
+        if (! isset($out['fontSize'])) {
+            $fontSize = $this->extractTextFontSize($node);
+            if ($fontSize > 0) {
+                $out['fontSize'] = $fontSize;
+            }
         }
 
         return $out;

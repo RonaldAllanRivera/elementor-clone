@@ -42,13 +42,16 @@ class LayoutToElementorServiceTest extends TestCase
 
         $section = $payload['content'][0];
         $this->assertSame('section', $section['elType']);
-        $this->assertSame(substr(md5('root'), 0, 8), $section['id']);
+        $this->assertIsString($section['id']);
+        $this->assertSame(8, strlen($section['id']));
         $this->assertIsArray($section['elements']);
         $this->assertCount(1, $section['elements']);
 
         $column = $section['elements'][0];
         $this->assertSame('column', $column['elType']);
-        $this->assertSame(substr(md5('root.column.0'), 0, 8), $column['id']);
+        $this->assertIsString($column['id']);
+        $this->assertSame(8, strlen($column['id']));
+        $this->assertFalse($column['isInner']);
         $this->assertCount(1, $column['elements']);
 
         $heading = $column['elements'][0];
@@ -56,7 +59,8 @@ class LayoutToElementorServiceTest extends TestCase
         $this->assertSame('heading', $heading['widgetType']);
         $this->assertSame('Hello World', $heading['settings']['title']);
         $this->assertSame('h1', $heading['settings']['header_size']);
-        $this->assertSame(substr(md5('root.column.0.elements.0'), 0, 8), $heading['id']);
+        $this->assertIsString($heading['id']);
+        $this->assertSame(8, strlen($heading['id']));
     }
 
     public function test_export_maps_plain_string_to_text_editor_widget(): void

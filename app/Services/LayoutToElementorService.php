@@ -37,7 +37,7 @@ class LayoutToElementorService
                 [
                     'id' => $this->makeId($path . '.column.0'),
                     'elType' => 'column',
-                    'isInner' => true,
+                    'isInner' => false,
                     'settings' => [],
                     'elements' => $elements,
                 ],
@@ -75,7 +75,7 @@ class LayoutToElementorService
                     [
                         'id' => $this->makeId($path . '.wrap.section.' . $i . '.column.0'),
                         'elType' => 'column',
-                        'isInner' => true,
+                        'isInner' => false,
                         'settings' => [],
                         'elements' => [$element],
                     ],
@@ -307,7 +307,7 @@ class LayoutToElementorService
             $colElements[] = [
                 'id' => $this->makeId($path . '.column.' . $i),
                 'elType' => 'column',
-                'isInner' => true,
+                'isInner' => false,
                 'settings' => [],
                 'elements' => $mapped,
             ];
@@ -338,8 +338,8 @@ class LayoutToElementorService
             $colElements[] = [
                 'id' => $this->makeId($path . '.container.' . $i),
                 'elType' => 'container',
-                'isInner' => true,
-                'settings' => [],
+                'isInner' => $depth > 0,
+                'settings' => $this->layoutStyleToContainerSettings(is_array($col) ? $col : []),
                 'elements' => $mapped,
             ];
         }
