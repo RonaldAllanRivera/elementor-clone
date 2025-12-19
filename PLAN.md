@@ -90,7 +90,30 @@
   - Example fixture JSONs and expected Elementor outputs.
   - Feature tests for export download behavior (auth + ownership).
 
-### Phase 3 – WordPress Plugin
+ - **Status**
+   - Completed (download + view/copy UI, classic + container exports, fixtures + unit/feature tests).
+
+### Phase 3 – Figma Integration (API Import)
+
+- **Features**
+  - Input a Figma Frame URL (`.../design/<fileKey>/...?...node-id=...`).
+  - Fetch the node via Figma REST API using `FIGMA_TOKEN`.
+  - Convert the Figma node tree into internal layout schema.
+  - Generate an HTML preview from the imported layout.
+  - First-pass fidelity:
+    - Auto Layout → containers/columns + spacing.
+    - SOLID fills, borders, radius, basic drop shadow.
+    - Typography (family/size/weight/line-height/letter-spacing/color/alignment).
+    - Images as placeholders (Option A).
+
+- **Deliverables**
+  - Feature tests with HTTP fakes.
+  - UI action/button “Import from Figma” on the Design page.
+
+- **Status**
+  - Completed (end-to-end import with tests; HTML preview aims for closer visual match).
+
+### Phase 4 – WordPress Plugin
 
 - **Features**
   - Custom plugin providing:
@@ -101,15 +124,6 @@
 - **Deliverables**
   - WP plugin repo (separate GitHub repo or subfolder).
   - Tested against a local Dockerized WordPress instance.
-
-### Phase 4 – Figma Integration (Basic)
-
-- **Features**
-  - (Manual first) Use Figma REST API or export JSON and create a mock converter from Figma file JSON → layout schema.
-  - (Later) Figma plugin in TypeScript to send structured JSON directly to Laravel API.
-
-- **Deliverables**
-  - Mapping rules (doc) from Figma structures to your layout schema (naming conventions, auto‑layout usage).
 
 ### Phase 5 – AWS Deployment & CI/CD
 
@@ -202,7 +216,13 @@
 
 **Next focus**
 
-1. Phase 2: Define the internal layout schema and map it to Elementor JSON.
-2. Add a “Export Elementor JSON” action on designs and download an import-compatible `.json`.
-3. Add fixtures + tests for mapping (unit tests for deterministic outputs).
-4. Add a basic CI workflow that runs the test suite on every push/PR.
+1. Improve Figma import fidelity (best ROI):
+   - Width constraints (percent/fill/hug) for columns/containers.
+   - More widget detection (buttons, nav, badges, cards).
+   - Better grouping heuristics for non-auto-layout frames.
+2. Add an “Import diagnostics” view (node stats + warnings + mapping decisions).
+3. Decide how to handle real images:
+   - Keep Option A placeholders (fast).
+   - Or add optional download/storage + URL hosting (needed for real Elementor image imports).
+4. (Optional) Gradually map validated style keys into Elementor JSON.
+5. Add a basic CI workflow that runs the test suite on every push/PR.

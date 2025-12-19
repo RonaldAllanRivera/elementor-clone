@@ -16,6 +16,16 @@ entries are milestone-based until a public release is tagged.
 - `Project` and `Design` models with migrations, controllers, and form request classes.
 - Authenticated Projects and Designs CRUD views using Blade.
 - Simple layout JSON → HTML rendering service and a sandboxed preview page.
+- Elementor JSON export for designs (Classic + Container formats), including download and view/copy pages.
+- Artisan command to export a design’s Elementor JSON to storage.
+- Figma Frame URL support on designs (`figma_url`) and a one-click “Import from Figma” action.
+- Figma API importer using `FIGMA_TOKEN` to fetch a Frame node and generate `layout_json` + HTML preview.
+- First-pass import fidelity:
+  - Auto Layout → containers/columns + spacing.
+  - SOLID fills, borders, radius, basic drop shadow.
+  - Typography (family/size/weight/line-height/letter-spacing/color/alignment).
+  - Image placeholders (no downloads).
+- Fixtures and unit/feature tests for Elementor export mapping and Figma import.
 - Admin user seeder for a single-user setup.
 - Automatic, unique project slug generation from project name (regenerated on save).
 - PHPUnit test suite running successfully (`artisan test`).
@@ -27,6 +37,8 @@ entries are milestone-based until a public release is tagged.
 - Switched session driver to `file` in `.env` for simpler local development and to avoid early 419 (Page Expired) issues.
 - Configured `APP_URL` to `http://elementor-clone.test` and documented local hosts entry for a friendly Sail domain.
 - Disabled public registration routes (single-admin system).
+- Figma API authentication uses `X-Figma-Token` (personal access token header).
+- Elementor container export normalizes root wrapping for consistent imports.
 
 ### Planned
 

@@ -22,16 +22,22 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
   - Form request classes for validation.
 - **Projects & Designs UI**:
   - Authenticated CRUD screens for projects and designs.
-  - Paste layout JSON for a design and get an HTML preview (sandboxed iframe).
+  - Import from Figma via a Frame URL.
+  - HTML preview (sandboxed iframe) generated from the internal `layout_json`.
+- **Elementor JSON export**:
+  - Download Elementor-compatible JSON in two formats:
+    - Classic (section/column/widget)
+    - Container-based (nested containers)
+  - View/copy JSON inline.
 - **Automatic project slugs** generated from the project name (unique, regenerated on save).
 - **Single-user setup**: registration disabled, admin user seeded via `.env`.
 - **Test suite** (Laravel default feature + auth tests) all passing.
 
 Next milestones:
 
-- Elementor JSON export from the internal layout schema.
+- Improve Figma → layout fidelity (width constraints, better widget inference).
+- Optional image hosting (currently placeholders) for better Elementor imports.
 - WordPress import workflow (plugin or API-based).
-- Figma integration to produce normalized layout JSON.
 
 ---
 
@@ -80,6 +86,23 @@ cp .env.example .env
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate
 ```
+
+### Figma import setup
+
+To enable “Import from Figma”, configure a Figma Personal Access Token:
+
+- `FIGMA_TOKEN` – required
+
+The importer expects a **Frame URL** (must include `node-id`). Example:
+
+```
+https://www.figma.com/design/<fileKey>/<name>?node-id=123-456
+```
+
+Notes:
+
+- The API call uses the `X-Figma-Token` header.
+- The Frame must be accessible to the token’s user.
 
 If Breeze is not installed yet (only once):
 

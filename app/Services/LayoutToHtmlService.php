@@ -97,13 +97,23 @@ HTML;
                 $level = (int) ($node['level'] ?? 2);
                 $level = max(1, min(3, $level));
 
-                return '<h' . $level . '>' . htmlspecialchars($text, ENT_QUOTES) . '</h' . $level . '>';
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<h' . $level . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>'
+                    . htmlspecialchars($text, ENT_QUOTES)
+                    . '</h' . $level . '>';
             }
 
             if ($type === 'text') {
                 $text = is_string($node['text'] ?? null) ? $node['text'] : '';
 
-                return '<p>' . htmlspecialchars($text, ENT_QUOTES) . '</p>';
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<p' . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '') . '>'
+                    . htmlspecialchars($text, ENT_QUOTES)
+                    . '</p>';
             }
 
             if ($type === 'image') {
@@ -114,7 +124,12 @@ HTML;
                     return '';
                 }
 
-                return '<img src="' . htmlspecialchars($src, ENT_QUOTES) . '" alt="' . htmlspecialchars($alt, ENT_QUOTES) . '" />';
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<img src="' . htmlspecialchars($src, ENT_QUOTES) . '" alt="' . htmlspecialchars($alt, ENT_QUOTES) . '"'
+                    . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '')
+                    . ' />';
             }
 
             if ($type === 'button') {
@@ -157,6 +172,22 @@ HTML;
             $css[] = 'gap:' . ((float) $style['gap']) . 'px';
         }
 
+        if (is_string($style['backgroundColor'] ?? null) && $style['backgroundColor'] !== '') {
+            $css[] = 'background-color:' . (string) $style['backgroundColor'];
+        }
+
+        if (is_string($style['border'] ?? null) && $style['border'] !== '') {
+            $css[] = 'border:' . (string) $style['border'];
+        }
+
+        if (is_string($style['borderRadius'] ?? null) && $style['borderRadius'] !== '') {
+            $css[] = 'border-radius:' . (string) $style['borderRadius'];
+        }
+
+        if (is_string($style['boxShadow'] ?? null) && $style['boxShadow'] !== '') {
+            $css[] = 'box-shadow:' . (string) $style['boxShadow'];
+        }
+
         $padding = $style['padding'] ?? null;
         if (is_array($padding)) {
             $t = is_numeric($padding['top'] ?? null) ? (float) $padding['top'] : 0;
@@ -195,6 +226,38 @@ HTML;
 
         if (isset($alignMap[$align])) {
             $css[] = 'align-items:' . $alignMap[$align];
+        }
+
+        if (is_string($style['fontFamily'] ?? null) && $style['fontFamily'] !== '') {
+            $css[] = 'font-family:' . (string) $style['fontFamily'];
+        }
+
+        if (is_numeric($style['fontSize'] ?? null)) {
+            $css[] = 'font-size:' . ((float) $style['fontSize']) . 'px';
+        }
+
+        if (is_numeric($style['fontWeight'] ?? null)) {
+            $css[] = 'font-weight:' . (int) $style['fontWeight'];
+        }
+
+        if (is_numeric($style['lineHeightPx'] ?? null)) {
+            $css[] = 'line-height:' . ((float) $style['lineHeightPx']) . 'px';
+        }
+
+        if (is_numeric($style['letterSpacing'] ?? null)) {
+            $css[] = 'letter-spacing:' . ((float) $style['letterSpacing']) . 'px';
+        }
+
+        if (is_string($style['color'] ?? null) && $style['color'] !== '') {
+            $css[] = 'color:' . (string) $style['color'];
+        }
+
+        if (is_string($style['textAlign'] ?? null) && $style['textAlign'] !== '') {
+            $css[] = 'text-align:' . (string) $style['textAlign'];
+        }
+
+        if (is_string($style['textTransform'] ?? null) && $style['textTransform'] !== '') {
+            $css[] = 'text-transform:' . (string) $style['textTransform'];
         }
 
         return implode(';', $css);
