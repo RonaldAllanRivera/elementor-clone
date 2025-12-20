@@ -120,6 +120,9 @@
 
 ### Phase 4 – WordPress Plugin
 
+- **Status**
+  - De-scoped for the SiteGround deployment plan (manual Elementor import via downloaded JSON is sufficient).
+
 - **Features**
   - Custom plugin providing:
     - Admin page: upload Elementor JSON (from your Laravel app).
@@ -131,6 +134,9 @@
   - Tested against a local Dockerized WordPress instance.
 
 ### Phase 5 – AWS Deployment & CI/CD
+
+- **Status**
+  - De-scoped for the SiteGround deployment plan.
 
 - **Features**
   - Dockerized production image for Laravel app.
@@ -146,6 +152,33 @@
   - `Dockerfile` optimized for production.
   - GitHub Actions workflow YAML.
   - Basic monitoring/logging strategy.
+
+---
+
+### Phase 4 – SiteGround Deployment (Shared Hosting)
+
+- **Goal**
+  - Deploy this Laravel app to SiteGround (shared hosting) as a standalone web app.
+  - Keep workflow simple: import from Figma → preview → export Elementor JSON → manual import into Elementor.
+
+- **Checklist**
+  - Server requirements
+    - PHP version compatible with the project.
+    - Required PHP extensions enabled (common Laravel requirements).
+  - App setup
+    - Set document root to Laravel `public/` (or deploy with `public/` as the web root).
+    - Configure `.env` (DB, `APP_KEY`, `APP_URL`, `FIGMA_TOKEN`, mail/session settings).
+    - Run migrations.
+  - Storage + cache
+    - Ensure `storage/` and `bootstrap/cache/` are writable.
+    - Run `php artisan config:cache` and `php artisan route:cache` (optional, but recommended).
+  - Frontend assets
+    - Build assets locally and deploy `public/build` (do not rely on running Vite on the server).
+  - Background tasks (optional)
+    - If needed later: configure a cron job for `php artisan schedule:run`.
+  - Security
+    - Keep `.env` out of the public web root.
+    - Use HTTPS and set `APP_URL` accordingly.
 
 ---
 
