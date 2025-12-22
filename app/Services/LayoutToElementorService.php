@@ -474,6 +474,14 @@ class LayoutToElementorService
             return $this->buttonWidget($label, $href, $path);
         }
 
+        if ($type === 'input') {
+            $placeholder = is_string($node['placeholder'] ?? null) ? $node['placeholder'] : '';
+
+            $html = '<input type="text" placeholder="' . htmlspecialchars($placeholder, ENT_QUOTES) . '" />';
+
+            return $this->htmlWidget($html, $path);
+        }
+
         if ($type === 'nav') {
             $items = $node['items'] ?? [];
             $items = is_array($items) ? $items : [];

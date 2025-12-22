@@ -157,4 +157,171 @@ class DesignFigmaImportTest extends TestCase
         $this->assertStringContainsString('Shop Now', (string) $design->html);
         $this->assertStringContainsString('On Sale', (string) $design->html);
     }
+
+    public function test_import_from_figma_does_not_set_gap_when_space_between_is_used(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Header Row',
+                            'layoutMode' => 'HORIZONTAL',
+                            'primaryAxisAlignItems' => 'SPACE_BETWEEN',
+                            'itemSpacing' => 24,
+                            'paddingLeft' => 16,
+                            'paddingRight' => 16,
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 800, 'height' => 60],
+                            'children' => [
+                                [
+                                    'id' => 'left:1',
+                                    'type' => 'TEXT',
+                                    'characters' => 'Left',
+                                    'style' => ['fontSize' => 20],
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 60, 'height' => 24],
+                                ],
+                                [
+                                    'id' => 'right:1',
+                                    'type' => 'TEXT',
+                                    'characters' => 'Right',
+                                    'style' => ['fontSize' => 20],
+                                    'absoluteBoundingBox' => ['x' => 740, 'y' => 0, 'width' => 60, 'height' => 24],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $style = $design->layout_json['children'][0]['style'] ?? null;
+        $this->assertIsArray($style);
+        $this->assertSame('SPACE_BETWEEN', $style['justify'] ?? null);
+        $this->assertArrayNotHasKey('gap', $style);
+    }
+
+    public function test_import_from_figma_infers_input_field_widget(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Search Section',
+                            'layoutMode' => 'VERTICAL',
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 800, 'height' => 120],
+                            'children' => [
+                                [
+                                    'id' => 'search:1',
+                                    'type' => 'FRAME',
+                                    'name' => 'Search Input',
+                                    'layoutMode' => 'HORIZONTAL',
+                                    'itemSpacing' => 8,
+                                    'paddingTop' => 10,
+                                    'paddingRight' => 12,
+                                    'paddingBottom' => 10,
+                                    'paddingLeft' => 12,
+                                    'strokes' => [[
+                                        'type' => 'SOLID',
+                                        'visible' => true,
+                                        'color' => ['r' => 0.8, 'g' => 0.82, 'b' => 0.86, 'a' => 1],
+                                    ]],
+                                    'strokeWeight' => 1,
+                                    'cornerRadius' => 8,
+                                    'fills' => [[
+                                        'type' => 'SOLID',
+                                        'visible' => true,
+                                        'color' => ['r' => 1, 'g' => 1, 'b' => 1, 'a' => 1],
+                                    ]],
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 400, 'height' => 44],
+                                    'children' => [
+                                        [
+                                            'id' => 'search:icon',
+                                            'type' => 'VECTOR',
+                                            'name' => 'Icon',
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 20, 'height' => 20],
+                                        ],
+                                        [
+                                            'id' => 'search:placeholder',
+                                            'type' => 'TEXT',
+                                            'characters' => 'Search products',
+                                            'style' => ['fontSize' => 14],
+                                            'fills' => [[
+                                                'type' => 'SOLID',
+                                                'color' => ['r' => 0.4, 'g' => 0.45, 'b' => 0.55, 'a' => 1],
+                                            ]],
+                                            'absoluteBoundingBox' => ['x' => 28, 'y' => 0, 'width' => 140, 'height' => 20],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $this->assertSame('section', $design->layout_json['type'] ?? null);
+        $this->assertSame('input', $design->layout_json['children'][0]['type'] ?? null);
+        $this->assertSame('Search products', $design->layout_json['children'][0]['placeholder'] ?? null);
+
+        $this->assertNotNull($design->html);
+        $this->assertStringContainsString('placeholder="Search products"', (string) $design->html);
+    }
 }

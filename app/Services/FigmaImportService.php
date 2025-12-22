@@ -165,6 +165,10 @@ class FigmaImportService
             return [];
         }
 
+        if ($this->isInputLike($node)) {
+            return $this->mapInputLike($node);
+        }
+
         if ($this->isButtonLike($node)) {
             return $this->mapButtonLike($node);
         }
@@ -384,6 +388,7 @@ class FigmaImportService
     {
         $parentBox = $this->getAbsBox($node);
         $children = $this->sortedChildren($node);
+        $layoutStyle = $this->extractLayoutStyle($node, 'row');
         $columns = [];
         foreach ($children as $i => $child) {
             $mapped = $this->mapLayoutNode($child);
@@ -391,7 +396,7 @@ class FigmaImportService
                 continue;
             }
 
-            $colStyle = $this->extractSizingStyle($child, $parentBox);
+            $colStyle = $this->extractSizingStyle($child, $node, $parentBox, count($children), $layoutStyle);
 
             $columns[] = [
                 'type' => 'container',
@@ -405,7 +410,7 @@ class FigmaImportService
         }
 
         $style = array_merge(
-            $this->extractLayoutStyle($node, 'row'),
+            $layoutStyle,
             $this->extractVisualStyle($node)
         );
 
@@ -423,24 +428,50 @@ class FigmaImportService
      *
      * @return array<string, mixed>
      */
-    private function extractSizingStyle(array $node, array $parentBox): array
+    private function extractSizingStyle(array $node, array $parent, array $parentBox, int $childCount, array $parentLayoutStyle): array
     {
         $style = [];
 
         $box = $this->getAbsBox($node);
         $parentW = (float) ($parentBox['width'] ?? 0);
 
+        $padL = is_numeric($parent['paddingLeft'] ?? null) ? (float) $parent['paddingLeft'] : 0.0;
+        $padR = is_numeric($parent['paddingRight'] ?? null) ? (float) $parent['paddingRight'] : 0.0;
+        $gap = is_numeric($parentLayoutStyle['gap'] ?? null) ? (float) $parentLayoutStyle['gap'] : 0.0;
+
+        $availableW = $parentW;
+        if ($availableW > 0) {
+            $availableW = max(0.0, $availableW - $padL - $padR);
+            if ($gap > 0 && $childCount > 1) {
+                $availableW = max(0.0, $availableW - ($gap * ($childCount - 1)));
+            }
+        }
+
+        $sizing = isset($node['layoutSizingHorizontal']) && is_string($node['layoutSizingHorizontal'])
+            ? strtoupper((string) $node['layoutSizingHorizontal'])
+            : '';
+
         $grow = $node['layoutGrow'] ?? null;
-        if (is_numeric($grow) && (float) $grow > 0) {
-            $style['flexGrow'] = (float) $grow;
+        $isFill = $sizing === 'FILL' || (is_numeric($grow) && (float) $grow > 0);
+        $isHug = $sizing === 'HUG';
+
+        if ($isFill) {
+            $style['flexGrow'] = is_numeric($grow) && (float) $grow > 0 ? (float) $grow : 1.0;
+            $style['flexShrink'] = 1;
             $style['flexBasis'] = 0;
+        } elseif ($isHug) {
+            $style['flexGrow'] = 0;
+            $style['flexShrink'] = 0;
+            $style['flexBasisAuto'] = true;
         } else {
             $w = (float) ($box['width'] ?? 0);
-            if ($parentW > 0 && $w > 0) {
-                $pct = ($w / $parentW) * 100.0;
-                $style['widthPercent'] = max(0.0, min(100.0, $pct));
+            if ($w > 0) {
                 $style['flexGrow'] = 0;
                 $style['flexShrink'] = 0;
+                $style['widthPx'] = $w;
+            } elseif ($availableW > 0) {
+                $style['flexGrow'] = 1;
+                $style['flexBasis'] = 0;
             }
         }
 
@@ -455,6 +486,111 @@ class FigmaImportService
         }
 
         return $style;
+    }
+
+    private function isInputLike(array $node): bool
+    {
+        $type = isset($node['type']) && is_string($node['type']) ? strtoupper((string) $node['type']) : '';
+        if (! in_array($type, ['FRAME', 'COMPONENT', 'INSTANCE', 'GROUP'], true)) {
+            return false;
+        }
+
+        $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? strtoupper((string) $node['layoutMode']) : 'NONE';
+        if (! in_array($layoutMode, ['HORIZONTAL', 'VERTICAL'], true)) {
+            return false;
+        }
+
+        $children = $this->sortedChildren($node);
+        if ($children === [] || count($children) > 3) {
+            return false;
+        }
+
+        $textChild = null;
+        $iconCount = 0;
+        foreach ($children as $child) {
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+
+            if ($ct === 'TEXT') {
+                if ($textChild !== null) {
+                    return false;
+                }
+                $textChild = $child;
+                continue;
+            }
+
+            if (in_array($ct, ['VECTOR', 'BOOLEAN_OPERATION', 'STAR', 'ELLIPSE', 'LINE', 'POLYGON'], true)) {
+                $iconCount++;
+                continue;
+            }
+
+            return false;
+        }
+
+        if (! is_array($textChild)) {
+            return false;
+        }
+
+        $placeholder = is_string($textChild['characters'] ?? null) ? trim((string) $textChild['characters']) : '';
+        if ($placeholder === '') {
+            return false;
+        }
+
+        $name = is_string($node['name'] ?? null) ? strtolower(trim((string) $node['name'])) : '';
+        $looksLikeInput = str_contains($name, 'search') || str_contains($name, 'input') || str_contains($name, 'field');
+        if (! $looksLikeInput && $iconCount === 0) {
+            return false;
+        }
+
+        $visual = $this->extractVisualStyle($node);
+        $hasVisual = ($visual['backgroundColor'] ?? null) !== null
+            || ($visual['border'] ?? null) !== null
+            || ($visual['borderRadius'] ?? null) !== null
+            || ($visual['boxShadow'] ?? null) !== null;
+
+        $hasPadding = is_numeric($node['paddingTop'] ?? null)
+            || is_numeric($node['paddingRight'] ?? null)
+            || is_numeric($node['paddingBottom'] ?? null)
+            || is_numeric($node['paddingLeft'] ?? null);
+
+        return $hasVisual || $hasPadding;
+    }
+
+    private function mapInputLike(array $node): array
+    {
+        $children = $this->sortedChildren($node);
+
+        $textChild = null;
+        foreach ($children as $child) {
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+            if ($ct === 'TEXT') {
+                $textChild = $child;
+                break;
+            }
+        }
+
+        if (! is_array($textChild)) {
+            return [];
+        }
+
+        $placeholder = is_string($textChild['characters'] ?? null) ? trim((string) $textChild['characters']) : '';
+        if ($placeholder === '') {
+            return [];
+        }
+
+        $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? strtoupper((string) $node['layoutMode']) : 'NONE';
+        $direction = $layoutMode === 'VERTICAL' ? 'column' : 'row';
+
+        $style = array_merge(
+            $this->extractLayoutStyle($node, $direction),
+            $this->extractVisualStyle($node),
+            $this->extractTextStyle($textChild)
+        );
+
+        return [
+            'type' => 'input',
+            'placeholder' => $placeholder,
+            'style' => $style,
+        ];
     }
 
     /**
@@ -649,8 +785,11 @@ class FigmaImportService
             'direction' => $direction,
         ];
 
+        $primary = isset($node['primaryAxisAlignItems']) && is_string($node['primaryAxisAlignItems']) ? strtoupper($node['primaryAxisAlignItems']) : '';
+        $counter = isset($node['counterAxisAlignItems']) && is_string($node['counterAxisAlignItems']) ? strtoupper($node['counterAxisAlignItems']) : '';
+
         $itemSpacing = $node['itemSpacing'] ?? null;
-        if (is_numeric($itemSpacing)) {
+        if (is_numeric($itemSpacing) && ! in_array($primary, ['SPACE_BETWEEN', 'SPACE_AROUND', 'SPACE_EVENLY'], true)) {
             $style['gap'] = (float) $itemSpacing;
         }
 
@@ -677,9 +816,6 @@ class FigmaImportService
                 'left' => is_numeric($pad['left']) ? (float) $pad['left'] : 0,
             ];
         }
-
-        $primary = isset($node['primaryAxisAlignItems']) && is_string($node['primaryAxisAlignItems']) ? strtoupper($node['primaryAxisAlignItems']) : '';
-        $counter = isset($node['counterAxisAlignItems']) && is_string($node['counterAxisAlignItems']) ? strtoupper($node['counterAxisAlignItems']) : '';
 
         if ($primary !== '') {
             $style['justify'] = $primary;

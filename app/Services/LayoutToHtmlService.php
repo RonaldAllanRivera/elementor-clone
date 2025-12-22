@@ -27,6 +27,7 @@ class LayoutToHtmlService
     h1,h2,h3,p { margin: 0; font-size: inherit; font-weight: inherit; line-height: inherit; }
     a { color: inherit; text-decoration: none; }
     a.button { display: inline-flex; align-items: center; justify-content: center; }
+    input { font: inherit; color: inherit; }
     img { max-width: 100%; height: auto; display: block; }
     pre { white-space: pre-wrap; word-break: break-word; background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 10px; overflow: auto; }
 </style>
@@ -87,7 +88,11 @@ HTML;
                 foreach (is_array($columns) ? $columns : [] as $col) {
                     $colStyle = is_array($col) && is_array($col['style'] ?? null) ? $col['style'] : [];
 
-                    if (! isset($colStyle['widthPercent']) && ! isset($colStyle['flexGrow']) && ! isset($colStyle['flexBasis'])) {
+                    if (! isset($colStyle['widthPercent'])
+                        && ! isset($colStyle['flexGrow'])
+                        && ! isset($colStyle['flexBasis'])
+                        && ! isset($colStyle['widthPx'])
+                        && ! isset($colStyle['flexBasisAuto'])) {
                         $colStyle['flexGrow'] = 1;
                         $colStyle['flexBasis'] = 0;
                     }
@@ -154,6 +159,17 @@ HTML;
                 return '<a class="button" href="' . htmlspecialchars($href, ENT_QUOTES) . '"'
                     . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '')
                     . '>' . htmlspecialchars($label, ENT_QUOTES) . '</a>';
+            }
+
+            if ($type === 'input') {
+                $placeholder = is_string($node['placeholder'] ?? null) ? $node['placeholder'] : '';
+
+                $style = is_array($node['style'] ?? null) ? $node['style'] : [];
+                $inline = $this->inlineStyleFromLayoutStyle($style);
+
+                return '<input type="text" value="" placeholder="' . htmlspecialchars($placeholder, ENT_QUOTES) . '"'
+                    . ($inline !== '' ? (' style="' . htmlspecialchars($inline, ENT_QUOTES) . '"') : '')
+                    . ' />';
             }
 
             if ($type === 'nav') {
@@ -226,6 +242,18 @@ HTML;
 
         if (is_numeric($style['flexBasis'] ?? null)) {
             $css[] = 'flex-basis:' . (string) (float) $style['flexBasis'] . 'px';
+        }
+
+        if (($style['flexBasisAuto'] ?? null) === true) {
+            $css[] = 'flex-basis:auto';
+        }
+
+        if (is_numeric($style['widthPx'] ?? null)) {
+            $w = (int) round((float) $style['widthPx']);
+            if ($w > 0) {
+                $css[] = 'width:' . $w . 'px';
+                $css[] = 'max-width:' . $w . 'px';
+            }
         }
 
         if (is_numeric($style['widthPercent'] ?? null)) {
