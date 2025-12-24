@@ -324,4 +324,114 @@ class DesignFigmaImportTest extends TestCase
         $this->assertNotNull($design->html);
         $this->assertStringContainsString('placeholder="Search products"', (string) $design->html);
     }
+
+    public function test_import_from_figma_infers_card_pattern_with_background_rectangle(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Cards Section',
+                            'layoutMode' => 'VERTICAL',
+                            'itemSpacing' => 16,
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 800, 'height' => 400],
+                            'children' => [
+                                [
+                                    'id' => 'card:1',
+                                    'type' => 'FRAME',
+                                    'name' => 'Product Card',
+                                    'layoutMode' => 'NONE',
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 320, 'height' => 200],
+                                    'children' => [
+                                        [
+                                            'id' => 'card:bg',
+                                            'type' => 'RECTANGLE',
+                                            'name' => 'Card BG',
+                                            'cornerRadius' => 12,
+                                            'fills' => [[
+                                                'type' => 'SOLID',
+                                                'visible' => true,
+                                                'color' => ['r' => 1, 'g' => 1, 'b' => 1, 'a' => 1],
+                                            ]],
+                                            'effects' => [[
+                                                'type' => 'DROP_SHADOW',
+                                                'visible' => true,
+                                                'color' => ['r' => 0, 'g' => 0, 'b' => 0, 'a' => 0.15],
+                                                'offset' => ['x' => 0, 'y' => 6],
+                                                'radius' => 18,
+                                                'spread' => 0,
+                                            ]],
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 320, 'height' => 200],
+                                        ],
+                                        [
+                                            'id' => 'card:title',
+                                            'type' => 'TEXT',
+                                            'characters' => 'Product Name',
+                                            'style' => ['fontSize' => 20],
+                                            'absoluteBoundingBox' => ['x' => 16, 'y' => 16, 'width' => 200, 'height' => 28],
+                                        ],
+                                        [
+                                            'id' => 'card:price',
+                                            'type' => 'TEXT',
+                                            'characters' => '$49.00',
+                                            'style' => ['fontSize' => 16],
+                                            'absoluteBoundingBox' => ['x' => 16, 'y' => 52, 'width' => 80, 'height' => 22],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $this->assertSame('section', $design->layout_json['type'] ?? null);
+        $this->assertSame('container', $design->layout_json['children'][0]['type'] ?? null);
+
+        $style = $design->layout_json['children'][0]['style'] ?? null;
+        $this->assertIsArray($style);
+        $this->assertArrayHasKey('backgroundColor', $style);
+        $this->assertArrayHasKey('borderRadius', $style);
+        $this->assertArrayHasKey('boxShadow', $style);
+
+        $children = $design->layout_json['children'][0]['children'] ?? null;
+        $this->assertIsArray($children);
+        $this->assertCount(2, $children);
+        $this->assertSame('heading', $children[0]['type'] ?? null);
+        $this->assertSame('text', $children[1]['type'] ?? null);
+
+        $this->assertNotNull($design->html);
+        $this->assertStringContainsString('Product Name', (string) $design->html);
+        $this->assertStringContainsString('$49.00', (string) $design->html);
+    }
 }

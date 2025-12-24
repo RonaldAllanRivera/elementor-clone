@@ -26,6 +26,9 @@ entries are milestone-based until a public release is tagged.
   - SOLID fills, borders, radius, basic drop shadow.
   - Typography (family/size/weight/line-height/letter-spacing/color/alignment).
   - Image placeholders (no downloads).
+- Widget inference (iterative improvements):
+  - Input/search field detection mapped to an internal `input` node and exported as an Elementor `html` widget.
+  - Card-like frame detection (background rectangle + content) mapped to a container with merged visual style.
 - Fixtures and unit/feature tests for Elementor export mapping and Figma import.
 - Admin user seeder for a single-user setup.
 - Automatic, unique project slug generation from project name (regenerated on save).
@@ -39,6 +42,10 @@ entries are milestone-based until a public release is tagged.
 - Configured `APP_URL` to `http://elementor-clone.test` and documented local hosts entry for a friendly Sail domain.
 - Disabled public registration routes (single-admin system).
 - Figma API authentication uses `X-Figma-Token` (personal access token header).
+- Improved Auto Layout mapping fidelity:
+  - Avoid emitting `gap` when `SPACE_BETWEEN` is used (prevents double-spacing in preview).
+  - Better handling of fill/hug sizing hints in horizontal layouts.
+- PHPUnit configuration overrides MySQL host to `127.0.0.1` for host-run tests (avoids Docker DNS `DB_HOST=mysql`).
 - Elementor container export normalizes root wrapping for consistent imports.
 - Elementor export compatibility and structure:
   - IDs are 8-character hex strings (aligned with Elementor docs examples).

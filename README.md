@@ -7,7 +7,7 @@ This repository contains the **Laravel core** for the converter:
 - Projects + designs management with authenticated CRUD.
 - A normalized `layout_json` format stored per design.
 - Server-side layout JSON → HTML generation with a sandboxed preview.
-- A foundation for future Elementor JSON export and WordPress import workflows.
+- Elementor JSON export in multiple formats (for manual import into Elementor).
 
 For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
 
@@ -24,6 +24,9 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
   - Authenticated CRUD screens for projects and designs.
   - Import from Figma via a Frame URL.
   - HTML preview (sandboxed iframe) generated from the internal `layout_json`.
+- **Widget inference improvements (WIP, iterative)**:
+  - Input/search field detection.
+  - Card-like frames (background rectangle + content) mapped to containers.
 - **Elementor JSON export**:
   - Download Elementor-compatible JSON in multiple formats:
     - Classic (`classic`) (section/column/widget)
@@ -151,6 +154,8 @@ Run the full test suite inside Sail:
 ```bash
 ./vendor/bin/sail artisan test
 ```
+
+You can also run tests on the host if your MySQL is accessible locally. The test runner overrides DB connection settings in `phpunit.xml` to avoid relying on Docker DNS.
 
 Add new tests under the `tests/Feature` and `tests/Unit` directories as you build features.
 

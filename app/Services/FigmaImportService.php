@@ -165,6 +165,10 @@ class FigmaImportService
             return [];
         }
 
+        if ($this->isCardLike($node)) {
+            return $this->mapCardLike($node);
+        }
+
         if ($this->isInputLike($node)) {
             return $this->mapInputLike($node);
         }
@@ -189,6 +193,140 @@ class FigmaImportService
         }
 
         return $this->mapNonAutoLayout($node);
+    }
+
+    private function isCardLike(array $node): bool
+    {
+        $type = isset($node['type']) && is_string($node['type']) ? strtoupper((string) $node['type']) : '';
+        if (! in_array($type, ['FRAME', 'COMPONENT', 'INSTANCE', 'GROUP'], true)) {
+            return false;
+        }
+
+        $layoutMode = isset($node['layoutMode']) && is_string($node['layoutMode']) ? strtoupper((string) $node['layoutMode']) : 'NONE';
+        if ($layoutMode === 'HORIZONTAL') {
+            return false;
+        }
+
+        $children = $this->sortedChildren($node);
+        if (count($children) < 2) {
+            return false;
+        }
+
+        $bgIndex = $this->findBackgroundLikeChildIndex($node, $children);
+        if ($bgIndex === null) {
+            return false;
+        }
+
+        $contentCount = 0;
+        foreach ($children as $i => $child) {
+            if ($i === $bgIndex) {
+                continue;
+            }
+
+            $mapped = $this->mapLayoutNode($child);
+            if ($mapped !== []) {
+                $contentCount++;
+            }
+        }
+
+        return $contentCount >= 2;
+    }
+
+    private function mapCardLike(array $node): array
+    {
+        $children = $this->sortedChildren($node);
+        $bgIndex = $this->findBackgroundLikeChildIndex($node, $children);
+        if ($bgIndex === null) {
+            return [];
+        }
+
+        $bg = $children[$bgIndex];
+        if (! is_array($bg)) {
+            return [];
+        }
+
+        $outChildren = [];
+        foreach ($children as $i => $child) {
+            if ($i === $bgIndex) {
+                continue;
+            }
+
+            $mapped = $this->mapLayoutNode($child);
+            if ($mapped !== []) {
+                $outChildren[] = $mapped;
+            }
+        }
+
+        if ($outChildren === []) {
+            return [];
+        }
+
+        $style = array_merge(
+            $this->extractVisualStyle($bg),
+            $this->extractVisualStyle($node)
+        );
+
+        return [
+            'type' => 'container',
+            'style' => $style,
+            'children' => $outChildren,
+        ];
+    }
+
+    private function findBackgroundLikeChildIndex(array $parent, array $children): ?int
+    {
+        $pb = $this->getAbsBox($parent);
+        $px = (float) ($pb['x'] ?? 0);
+        $py = (float) ($pb['y'] ?? 0);
+        $pw = (float) ($pb['width'] ?? 0);
+        $ph = (float) ($pb['height'] ?? 0);
+        if ($pw <= 0 || $ph <= 0) {
+            return null;
+        }
+
+        foreach ($children as $i => $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+
+            $ct = isset($child['type']) && is_string($child['type']) ? strtoupper((string) $child['type']) : '';
+            if (! in_array($ct, ['RECTANGLE', 'VECTOR'], true)) {
+                continue;
+            }
+
+            $visual = $this->extractVisualStyle($child);
+            $hasVisual = ($visual['backgroundColor'] ?? null) !== null
+                || ($visual['border'] ?? null) !== null
+                || ($visual['borderRadius'] ?? null) !== null
+                || ($visual['boxShadow'] ?? null) !== null;
+            if (! $hasVisual) {
+                continue;
+            }
+
+            $cb = $this->getAbsBox($child);
+            $cx = (float) ($cb['x'] ?? 0);
+            $cy = (float) ($cb['y'] ?? 0);
+            $cw = (float) ($cb['width'] ?? 0);
+            $ch = (float) ($cb['height'] ?? 0);
+
+            if ($cw <= 0 || $ch <= 0) {
+                continue;
+            }
+
+            $sizeOk = ($cw / $pw) >= 0.92 && ($ch / $ph) >= 0.92;
+            if (! $sizeOk) {
+                continue;
+            }
+
+            $posOk = abs($cx - $px) <= 8.0 && abs($cy - $py) <= 8.0;
+            if (! $posOk) {
+                continue;
+            }
+
+            return $i;
+        }
+
+        return null;
     }
 
     private function isButtonLike(array $node): bool
@@ -461,7 +599,7 @@ class FigmaImportService
             $style['flexBasis'] = 0;
         } elseif ($isHug) {
             $style['flexGrow'] = 0;
-            $style['flexShrink'] = 0;
+            $style['flexShrink'] = 1;
             $style['flexBasisAuto'] = true;
         } else {
             $w = (float) ($box['width'] ?? 0);

@@ -110,13 +110,16 @@
     - SOLID fills, borders, radius, basic drop shadow.
     - Typography (family/size/weight/line-height/letter-spacing/color/alignment).
     - Images as placeholders (Option A).
+  - Widget inference (iterative refinements):
+    - Input/search fields.
+    - Card-like frames (background rectangle + content).
 
 - **Deliverables**
   - Feature tests with HTTP fakes.
   - UI action/button “Import from Figma” on the Design page.
 
 - **Status**
-  - Completed (end-to-end import with tests; HTML preview aims for closer visual match).
+  - Completed (end-to-end import with tests; ongoing fidelity improvements to Auto Layout sizing/spacing and widget inference).
 
 ### Phase 4 – WordPress Plugin
 
@@ -256,7 +259,7 @@
 
 1. Improve Figma import fidelity (best ROI):
    - Width constraints (percent/fill/hug) for columns/containers.
-   - More widget detection (buttons, nav, badges, cards).
+   - More widget detection (inputs/search, buttons, nav, badges, cards).
    - Better grouping heuristics for non-auto-layout frames.
 2. Add an “Import diagnostics” view (node stats + warnings + mapping decisions).
 3. Decide how to handle real images:
