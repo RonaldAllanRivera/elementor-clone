@@ -261,6 +261,11 @@
    - Width constraints (percent/fill/hug) for columns/containers.
    - More widget detection (inputs/search, buttons, nav, badges, cards).
    - Better grouping heuristics for non-auto-layout frames.
+2. Improve Elementor Classic export fidelity (style + alignment):
+   - Map container background styles (fill/border/radius/shadow) into section/column settings.
+   - Map spacing styles (padding) into section/column settings.
+   - Map alignment hints (center/space-between) into appropriate Classic section/column/widget settings.
+   - Add a regression fixture/test for an announcement/promo bar (centered text + right-aligned button + background color).
 2. Add an “Import diagnostics” view (node stats + warnings + mapping decisions).
 3. Decide how to handle real images:
    - Keep Option A placeholders (fast).

@@ -21,7 +21,7 @@ class LayoutToElementorService
         ];
     }
 
-    private function classicSectionFromChildren(mixed $children, string $path, string $format, int $depth): array
+    private function classicSectionFromChildren(mixed $children, string $path, string $format, int $depth, array $sourceNode = []): array
     {
         $elements = $this->mapNode(is_array($children) ? $children : [], $path . '.column.0.elements', $format, $depth + 2);
 
@@ -29,11 +29,13 @@ class LayoutToElementorService
             $elements = $elements === [] ? [] : [$elements];
         }
 
+        $sectionSettings = $this->layoutStyleToClassicSectionSettings($sourceNode);
+
         return [
             'id' => $this->makeId($path),
             'elType' => 'section',
             'isInner' => $depth > 0,
-            'settings' => [],
+            'settings' => $sectionSettings,
             'elements' => [
                 [
                     'id' => $this->makeId($path . '.column.0'),
@@ -425,14 +427,14 @@ class LayoutToElementorService
                 return $this->columnsElement($children[0], $path, $format, $depth);
             }
 
-            return $this->classicSectionFromChildren($children, $path, $format, $depth);
+            return $this->classicSectionFromChildren($children, $path, $format, $depth, $node);
         }
 
         if ($type === 'container') {
             $children = $node['children'] ?? [];
 
             if ($format === self::FORMAT_CLASSIC) {
-                return $this->classicSectionFromChildren($children, $path, $format, $depth);
+                return $this->classicSectionFromChildren($children, $path, $format, $depth, $node);
             }
 
             return $this->containerElement('container', $children, $path, $format, $depth, $this->layoutStyleToContainerSettings($node));
@@ -451,13 +453,25 @@ class LayoutToElementorService
             $level = (int) ($node['level'] ?? 2);
             $level = max(1, min(6, $level));
 
-            return $this->headingWidget($text, $level, $path);
+            $settings = [];
+            $style = $node['style'] ?? null;
+            if (is_array($style) && is_string($style['textAlign'] ?? null) && $style['textAlign'] !== '') {
+                $settings['align'] = (string) $style['textAlign'];
+            }
+
+            return $this->headingWidget($text, $level, $path, $settings);
         }
 
         if ($type === 'text') {
             $text = is_string($node['text'] ?? null) ? $node['text'] : '';
 
-            return $this->textWidget($text, $path);
+            $settings = [];
+            $style = $node['style'] ?? null;
+            if (is_array($style) && is_string($style['textAlign'] ?? null) && $style['textAlign'] !== '') {
+                $settings['align'] = (string) $style['textAlign'];
+            }
+
+            return $this->textWidget($text, $path, $settings);
         }
 
         if ($type === 'image') {
@@ -531,6 +545,8 @@ class LayoutToElementorService
         $columns = $node['columns'] ?? [];
         $columns = is_array($columns) ? $columns : [];
 
+        $columnSizes = $this->inferClassicColumnSizes($columns);
+
         $colElements = [];
         foreach ($columns as $i => $col) {
             $mapped = $this->mapNode($col, $path . '.col.' . $i, $format, $depth + 2);
@@ -539,11 +555,17 @@ class LayoutToElementorService
                 $mapped = $mapped === [] ? [] : [$mapped];
             }
 
+            $colSettings = [];
+            $size = $columnSizes[$i] ?? null;
+            if (is_int($size) && $size > 0 && $size <= 100) {
+                $colSettings['_column_size'] = (string) $size;
+            }
+
             $colElements[] = [
                 'id' => $this->makeId($path . '.column.' . $i),
                 'elType' => 'column',
                 'isInner' => false,
-                'settings' => [],
+                'settings' => $colSettings,
                 'elements' => $mapped,
             ];
         }
@@ -552,9 +574,130 @@ class LayoutToElementorService
             'id' => $this->makeId($path),
             'elType' => 'section',
             'isInner' => $depth > 0,
-            'settings' => [],
+            'settings' => $this->layoutStyleToClassicSectionSettings($node),
             'elements' => $colElements,
         ];
+    }
+
+    /**
+     * @param array<int, mixed> $columns
+     * @return array<int, int>
+     */
+    private function inferClassicColumnSizes(array $columns): array
+    {
+        $out = [];
+        if ($columns === []) {
+            return $out;
+        }
+
+        $widthPercents = [];
+        $widthPx = [];
+        $totalPx = 0.0;
+
+        foreach ($columns as $i => $col) {
+            $style = is_array($col) ? ($col['style'] ?? null) : null;
+            $style = is_array($style) ? $style : null;
+
+            $wp = $style !== null && is_numeric($style['widthPercent'] ?? null) ? (float) $style['widthPercent'] : null;
+            if ($wp !== null && $wp > 0) {
+                $widthPercents[$i] = $wp;
+                continue;
+            }
+
+            $px = $style !== null && is_numeric($style['widthPx'] ?? null) ? (float) $style['widthPx'] : null;
+            if ($px !== null && $px > 0) {
+                $widthPx[$i] = $px;
+                $totalPx += $px;
+            }
+        }
+
+        if ($widthPercents !== []) {
+            $sum = 0;
+            $lastIndex = null;
+            foreach ($columns as $i => $_) {
+                $lastIndex = $i;
+                $raw = $widthPercents[$i] ?? null;
+                if (! is_float($raw)) {
+                    continue;
+                }
+                $val = (int) round($raw);
+                $val = max(1, min(100, $val));
+                $out[$i] = $val;
+                $sum += $val;
+            }
+
+            if ($lastIndex !== null && $sum !== 100 && isset($out[$lastIndex])) {
+                $out[$lastIndex] = max(1, min(100, $out[$lastIndex] + (100 - $sum)));
+            }
+
+            return $out;
+        }
+
+        if ($totalPx > 0) {
+            $sum = 0;
+            $lastIndex = null;
+            foreach ($columns as $i => $_) {
+                $lastIndex = $i;
+                $raw = $widthPx[$i] ?? null;
+                if (! is_float($raw)) {
+                    continue;
+                }
+                $val = (int) round(($raw / $totalPx) * 100.0);
+                $val = max(1, min(100, $val));
+                $out[$i] = $val;
+                $sum += $val;
+            }
+
+            if ($lastIndex !== null && $sum !== 100 && isset($out[$lastIndex])) {
+                $out[$lastIndex] = max(1, min(100, $out[$lastIndex] + (100 - $sum)));
+            }
+
+            return $out;
+        }
+
+        return $out;
+    }
+
+    private function layoutStyleToClassicSectionSettings(array $node): array
+    {
+        $style = $node['style'] ?? null;
+        if (! is_array($style)) {
+            return [];
+        }
+
+        $out = [];
+
+        $bg = $style['backgroundColor'] ?? null;
+        if (is_string($bg) && $bg !== '') {
+            $out['background_background'] = 'classic';
+            $out['background_color'] = $bg;
+        }
+
+        $padding = $style['padding'] ?? null;
+        if (is_array($padding)) {
+            $t = is_numeric($padding['top'] ?? null) ? (float) $padding['top'] : null;
+            $r = is_numeric($padding['right'] ?? null) ? (float) $padding['right'] : null;
+            $b = is_numeric($padding['bottom'] ?? null) ? (float) $padding['bottom'] : null;
+            $l = is_numeric($padding['left'] ?? null) ? (float) $padding['left'] : null;
+
+            if (! ($t === null && $r === null && $b === null && $l === null)) {
+                $t = (string) (int) round((float) ($t ?? 0));
+                $r = (string) (int) round((float) ($r ?? 0));
+                $b = (string) (int) round((float) ($b ?? 0));
+                $l = (string) (int) round((float) ($l ?? 0));
+
+                $out['padding'] = [
+                    'unit' => 'px',
+                    'top' => $t,
+                    'right' => $r,
+                    'bottom' => $b,
+                    'left' => $l,
+                    'isLinked' => $t === $r && $r === $b && $b === $l,
+                ];
+            }
+        }
+
+        return $out;
     }
 
     private function columnsAsContainersElement(array $node, string $path, string $format, int $depth): array
@@ -628,31 +771,31 @@ class LayoutToElementorService
         ];
     }
 
-    private function headingWidget(string $text, int $level, string $path): array
+    private function headingWidget(string $text, int $level, string $path, array $extraSettings = []): array
     {
         return [
             'id' => $this->makeId($path),
             'elType' => 'widget',
             'widgetType' => 'heading',
             'isInner' => false,
-            'settings' => [
+            'settings' => array_merge([
                 'title' => $text,
                 'header_size' => 'h' . $level,
-            ],
+            ], $extraSettings),
             'elements' => [],
         ];
     }
 
-    private function textWidget(string $text, string $path): array
+    private function textWidget(string $text, string $path, array $extraSettings = []): array
     {
         return [
             'id' => $this->makeId($path),
             'elType' => 'widget',
             'widgetType' => 'text-editor',
             'isInner' => false,
-            'settings' => [
+            'settings' => array_merge([
                 'editor' => '<p>' . htmlspecialchars($text, ENT_QUOTES) . '</p>',
-            ],
+            ], $extraSettings),
             'elements' => [],
         ];
     }
