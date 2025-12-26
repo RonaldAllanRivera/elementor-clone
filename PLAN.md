@@ -265,6 +265,8 @@
    - Map container background styles (fill/border/radius/shadow) into section/column settings.
    - Map spacing styles (padding) into section/column settings.
    - Map alignment hints (center/space-between) into appropriate Classic section/column/widget settings.
+   - Map text color + typography (family/size/weight/line-height/letter-spacing) into Elementor widget settings.
+   - Detect Figma gradients and export Elementor gradient backgrounds.
    - Add a regression fixture/test for an announcement/promo bar (centered text + right-aligned button + background color).
 2. Add an “Import diagnostics” view (node stats + warnings + mapping decisions).
 3. Decide how to handle real images:
@@ -272,3 +274,7 @@
    - Or add optional download/storage + URL hosting (needed for real Elementor image imports).
 4. (Optional) Gradually map validated style keys into Elementor JSON.
 5. Add a basic CI workflow that runs the test suite on every push/PR.
+
+Deferred backlog
+
+- Header completeness + alignment fidelity (ensure expected header slots are preserved without creating extra structure).

@@ -40,8 +40,15 @@ For a deeper technical roadmap, see [`PLAN.md`](./PLAN.md).
 Next milestones:
 
 - Improve Figma → layout fidelity (width constraints, better widget inference).
+- Improve Elementor style fidelity:
+  - Text color + typography mapping for heading/text widgets.
+  - Gradient background mapping for sections/containers when detected in Figma.
 - Optional image hosting (currently placeholders) for better Elementor imports.
 - WordPress import workflow (plugin or API-based).
+
+Deferred backlog:
+
+- Header completeness + alignment fidelity work will be revisited after style fidelity milestones.
 
 ---
 

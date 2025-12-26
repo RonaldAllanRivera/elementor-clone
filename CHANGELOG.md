@@ -59,3 +59,7 @@ entries are milestone-based until a public release is tagged.
 - Figma integration to generate normalized layout JSON.
 - GitHub Actions workflow to run tests on each push and pull request.
 - AWS deployment configuration (Docker-based).
+
+- Map text styles (color + typography) into Elementor widget settings for higher fidelity imports.
+- Detect Figma gradient fills and export equivalent Elementor gradient background settings.
+- Backlog: header completeness + alignment fidelity (ensure expected header slots are preserved without adding extra structure).
