@@ -309,9 +309,179 @@ class FigmaImportService
                 $style['flexShrink'] = 1;
                 $style['flexBasisAuto'] = true;
             }
+
+            if ($sizingV === '') {
+                $type = isset($node['type']) && is_string($node['type']) ? strtoupper((string) $node['type']) : '';
+                if (in_array($type, ['FRAME', 'COMPONENT', 'INSTANCE', 'GROUP'], true)) {
+                    $box = $this->getAbsBox($node);
+                    $h = (float) ($box['height'] ?? 0);
+                    if ($h > 0) {
+                        $style['heightPx'] = $h;
+                    }
+                }
+            }
         }
 
         return $style;
+    }
+
+    private function inferAutoLayoutSpacingStyle(array $node, array $children, string $direction, array $style): array
+    {
+        if (count($children) === 0) {
+            return $style;
+        }
+
+        $justify = is_string($style['justify'] ?? null) ? strtoupper((string) $style['justify']) : '';
+        $skipGap = in_array($justify, ['SPACE_BETWEEN', 'SPACE_AROUND', 'SPACE_EVENLY'], true);
+        if (($style['wrap'] ?? null) === true) {
+            $skipGap = true;
+        }
+
+        if (! isset($style['padding']) || ! is_array($style['padding'])) {
+            $pad = $this->inferPaddingFromChildren($node, $children);
+            if ($pad !== null) {
+                $style['padding'] = $pad;
+            }
+        }
+
+        if (! $skipGap && ! isset($style['gap'])) {
+            $gap = $this->inferGapFromChildren($children, $direction);
+            if ($gap !== null) {
+                $style['gap'] = $gap;
+            }
+        }
+
+        return $style;
+    }
+
+    private function inferPaddingFromChildren(array $node, array $children): ?array
+    {
+        $pb = $this->getAbsBox($node);
+        $px = (float) ($pb['x'] ?? 0);
+        $py = (float) ($pb['y'] ?? 0);
+        $pw = (float) ($pb['width'] ?? 0);
+        $ph = (float) ($pb['height'] ?? 0);
+        if ($pw <= 0 || $ph <= 0) {
+            return null;
+        }
+
+        $minLeft = null;
+        $minTop = null;
+        $minRight = null;
+        $minBottom = null;
+
+        foreach ($children as $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+            $cb = $this->getAbsBox($child);
+            $cx = (float) ($cb['x'] ?? 0);
+            $cy = (float) ($cb['y'] ?? 0);
+            $cw = (float) ($cb['width'] ?? 0);
+            $ch = (float) ($cb['height'] ?? 0);
+            if ($cw <= 0 || $ch <= 0) {
+                continue;
+            }
+
+            $l = max(0.0, $cx - $px);
+            $t = max(0.0, $cy - $py);
+            $r = max(0.0, ($px + $pw) - ($cx + $cw));
+            $b = max(0.0, ($py + $ph) - ($cy + $ch));
+
+            $minLeft = $minLeft === null ? $l : min($minLeft, $l);
+            $minTop = $minTop === null ? $t : min($minTop, $t);
+            $minRight = $minRight === null ? $r : min($minRight, $r);
+            $minBottom = $minBottom === null ? $b : min($minBottom, $b);
+        }
+
+        if ($minLeft === null || $minTop === null || $minRight === null || $minBottom === null) {
+            return null;
+        }
+
+        $l = (float) $minLeft;
+        $t = (float) $minTop;
+        $r = (float) $minRight;
+        $b = (float) $minBottom;
+
+        if ($l <= 0 && $t <= 0 && $r <= 0 && $b <= 0) {
+            return null;
+        }
+
+        if ($l < 2.0) {
+            $l = 0.0;
+        }
+        if ($t < 2.0) {
+            $t = 0.0;
+        }
+        if ($r < 2.0) {
+            $r = 0.0;
+        }
+        if ($b < 2.0) {
+            $b = 0.0;
+        }
+
+        if ($l <= 0 && $t <= 0 && $r <= 0 && $b <= 0) {
+            return null;
+        }
+
+        return [
+            'top' => $t,
+            'right' => $r,
+            'bottom' => $b,
+            'left' => $l,
+        ];
+    }
+
+    private function inferGapFromChildren(array $children, string $direction): ?float
+    {
+        if (count($children) < 2) {
+            return null;
+        }
+
+        $gaps = [];
+        $prev = null;
+        foreach ($children as $child) {
+            if (! is_array($child)) {
+                continue;
+            }
+            $cb = $this->getAbsBox($child);
+            $pos = $direction === 'row'
+                ? (float) ($cb['x'] ?? 0)
+                : (float) ($cb['y'] ?? 0);
+            $size = $direction === 'row'
+                ? (float) ($cb['width'] ?? 0)
+                : (float) ($cb['height'] ?? 0);
+            if ($size <= 0) {
+                continue;
+            }
+
+            if (is_array($prev)) {
+                $gap = $pos - ((float) ($prev['pos'] ?? 0) + (float) ($prev['size'] ?? 0));
+                if ($gap > 0.5) {
+                    $gaps[] = $gap;
+                }
+            }
+
+            $prev = ['pos' => $pos, 'size' => $size];
+        }
+
+        if ($gaps === []) {
+            return null;
+        }
+
+        sort($gaps);
+        $median = $gaps[(int) floor((count($gaps) - 1) / 2)];
+        if ($median < 2.0) {
+            return null;
+        }
+
+        foreach ($gaps as $g) {
+            if (abs($g - $median) > 3.0) {
+                return null;
+            }
+        }
+
+        return (float) $median;
     }
 
     private function findBackgroundLikeChildIndex(array $parent, array $children): ?int
@@ -591,6 +761,10 @@ class FigmaImportService
     {
         $children = $this->sortedChildren($node);
         $visualStyle = $this->mergeBackgroundLikeChildVisualStyle($node, $children);
+
+        $layoutStyle = $this->extractLayoutStyle($node, 'column');
+        $layoutStyle = $this->inferAutoLayoutSpacingStyle($node, $children, 'column', $layoutStyle);
+
         $outChildren = [];
         foreach ($children as $i => $child) {
             $childStyle = $this->extractVerticalChildStyle($child);
@@ -613,7 +787,7 @@ class FigmaImportService
         }
 
         $style = array_merge(
-            $this->extractLayoutStyle($node, 'column'),
+            $layoutStyle,
             $visualStyle
         );
 
@@ -633,6 +807,7 @@ class FigmaImportService
         $children = $this->sortedChildren($node);
         $visualStyle = $this->mergeBackgroundLikeChildVisualStyle($node, $children);
         $layoutStyle = $this->extractLayoutStyle($node, 'row');
+        $layoutStyle = $this->inferAutoLayoutSpacingStyle($node, $children, 'row', $layoutStyle);
         $columns = [];
         $mappedChildPairs = [];
         foreach ($children as $i => $child) {
@@ -711,9 +886,17 @@ class FigmaImportService
         $box = $this->getAbsBox($node);
         $parentW = (float) ($parentBox['width'] ?? 0);
 
-        $padL = is_numeric($parent['paddingLeft'] ?? null) ? (float) $parent['paddingLeft'] : 0.0;
-        $padR = is_numeric($parent['paddingRight'] ?? null) ? (float) $parent['paddingRight'] : 0.0;
+        $pad = $parentLayoutStyle['padding'] ?? null;
+        $padL = is_array($pad) && is_numeric($pad['left'] ?? null)
+            ? (float) $pad['left']
+            : (is_numeric($parent['paddingLeft'] ?? null) ? (float) $parent['paddingLeft'] : 0.0);
+        $padR = is_array($pad) && is_numeric($pad['right'] ?? null)
+            ? (float) $pad['right']
+            : (is_numeric($parent['paddingRight'] ?? null) ? (float) $parent['paddingRight'] : 0.0);
         $gap = is_numeric($parentLayoutStyle['gap'] ?? null) ? (float) $parentLayoutStyle['gap'] : 0.0;
+        if (($parentLayoutStyle['wrap'] ?? null) === true) {
+            $gap = 0.0;
+        }
 
         $availableW = $parentW;
         if ($availableW > 0) {
@@ -730,6 +913,10 @@ class FigmaImportService
         $grow = $node['layoutGrow'] ?? null;
         $isFill = $sizing === 'FILL' || (is_numeric($grow) && (float) $grow > 0);
         $isHug = $sizing === 'HUG';
+
+        $sizingV = isset($node['layoutSizingVertical']) && is_string($node['layoutSizingVertical'])
+            ? strtoupper((string) $node['layoutSizingVertical'])
+            : '';
 
         if ($isFill) {
             $style['flexGrow'] = is_numeric($grow) && (float) $grow > 0 ? (float) $grow : 1.0;
@@ -759,6 +946,9 @@ class FigmaImportService
 
         $h = (float) ($box['height'] ?? 0);
         if ($h > 0) {
+            if ($sizingV === '') {
+                $style['heightPx'] = $h;
+            }
             $style['minHeightPx'] = $h;
         }
 
@@ -766,9 +956,6 @@ class FigmaImportService
         if ($layoutAlign !== '') {
             $style['alignSelf'] = $layoutAlign;
         } else {
-            $sizingV = isset($node['layoutSizingVertical']) && is_string($node['layoutSizingVertical'])
-                ? strtoupper((string) $node['layoutSizingVertical'])
-                : '';
             if ($sizingV === 'FILL') {
                 $style['alignSelf'] = 'STRETCH';
             }
@@ -1116,10 +1303,37 @@ class FigmaImportService
 
         $primary = isset($node['primaryAxisAlignItems']) && is_string($node['primaryAxisAlignItems']) ? strtoupper($node['primaryAxisAlignItems']) : '';
         $counter = isset($node['counterAxisAlignItems']) && is_string($node['counterAxisAlignItems']) ? strtoupper($node['counterAxisAlignItems']) : '';
+        $counterContent = isset($node['counterAxisAlignContent']) && is_string($node['counterAxisAlignContent']) ? strtoupper($node['counterAxisAlignContent']) : '';
+
+        $wrap = isset($node['layoutWrap']) && is_string($node['layoutWrap']) ? strtoupper($node['layoutWrap']) : '';
+        if ($wrap === 'WRAP') {
+            $style['wrap'] = true;
+        }
 
         $itemSpacing = $node['itemSpacing'] ?? null;
-        if (is_numeric($itemSpacing) && ! in_array($primary, ['SPACE_BETWEEN', 'SPACE_AROUND', 'SPACE_EVENLY'], true)) {
-            $style['gap'] = (float) $itemSpacing;
+        $counterAxisSpacing = $node['counterAxisSpacing'] ?? null;
+
+        if (! in_array($primary, ['SPACE_BETWEEN', 'SPACE_AROUND', 'SPACE_EVENLY'], true)) {
+            if (($style['wrap'] ?? null) === true) {
+                if (is_numeric($itemSpacing)) {
+                    $val = (float) $itemSpacing;
+                    if ($direction === 'row') {
+                        $style['columnGap'] = $val;
+                    } else {
+                        $style['rowGap'] = $val;
+                    }
+                }
+                if (is_numeric($counterAxisSpacing)) {
+                    $val = (float) $counterAxisSpacing;
+                    if ($direction === 'row') {
+                        $style['rowGap'] = $val;
+                    } else {
+                        $style['columnGap'] = $val;
+                    }
+                }
+            } elseif (is_numeric($itemSpacing)) {
+                $style['gap'] = (float) $itemSpacing;
+            }
         }
 
         $pad = [
@@ -1152,6 +1366,10 @@ class FigmaImportService
 
         if ($counter !== '') {
             $style['align'] = $counter;
+        }
+
+        if ($counterContent !== '') {
+            $style['alignContent'] = $counterContent;
         }
 
         return $style;

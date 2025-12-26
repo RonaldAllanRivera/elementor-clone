@@ -232,6 +232,10 @@ HTML;
             $css[] = 'flex-direction:' . $direction;
         }
 
+        if (($style['wrap'] ?? null) === true) {
+            $css[] = 'flex-wrap:wrap';
+        }
+
         if (is_numeric($style['flexGrow'] ?? null)) {
             $css[] = 'flex-grow:' . (string) (float) $style['flexGrow'];
         }
@@ -262,11 +266,29 @@ HTML;
             $css[] = 'max-width:' . rtrim(rtrim(number_format($w, 3, '.', ''), '0'), '.') . '%';
         }
 
+        if (is_numeric($style['heightPx'] ?? null)) {
+            $h = (int) round((float) $style['heightPx']);
+            if ($h > 0) {
+                $css[] = 'height:' . $h . 'px';
+                $css[] = 'max-height:' . $h . 'px';
+            }
+        }
+
         if (is_numeric($style['minHeightPx'] ?? null)) {
             $css[] = 'min-height:' . (string) (int) round((float) $style['minHeightPx']) . 'px';
         }
 
-        if (is_numeric($style['gap'] ?? null)) {
+        $hasRowGap = is_numeric($style['rowGap'] ?? null);
+        $hasColGap = is_numeric($style['columnGap'] ?? null);
+
+        if ($hasRowGap) {
+            $css[] = 'row-gap:' . ((float) $style['rowGap']) . 'px';
+        }
+        if ($hasColGap) {
+            $css[] = 'column-gap:' . ((float) $style['columnGap']) . 'px';
+        }
+
+        if (! $hasRowGap && ! $hasColGap && is_numeric($style['gap'] ?? null)) {
             $css[] = 'gap:' . ((float) $style['gap']) . 'px';
         }
 
@@ -301,6 +323,7 @@ HTML;
         $justify = is_string($style['justify'] ?? null) ? strtoupper((string) $style['justify']) : '';
         $align = is_string($style['align'] ?? null) ? strtoupper((string) $style['align']) : '';
         $alignSelf = is_string($style['alignSelf'] ?? null) ? strtoupper((string) $style['alignSelf']) : '';
+        $alignContent = is_string($style['alignContent'] ?? null) ? strtoupper((string) $style['alignContent']) : '';
 
         $justifyMap = [
             'MIN' => 'flex-start',
@@ -319,20 +342,24 @@ HTML;
             'STRETCH' => 'stretch',
         ];
 
-        if (isset($justifyMap[$justify])) {
+        if ($justify !== '' && isset($justifyMap[$justify])) {
             $css[] = 'justify-content:' . $justifyMap[$justify];
         }
 
-        if (isset($alignMap[$align])) {
+        if ($align !== '' && isset($alignMap[$align])) {
             $css[] = 'align-items:' . $alignMap[$align];
         }
 
-        if (isset($alignMap[$alignSelf])) {
+        if ($alignSelf !== '' && isset($alignMap[$alignSelf])) {
             $css[] = 'align-self:' . $alignMap[$alignSelf];
         }
 
-        if (is_string($style['fontFamily'] ?? null) && $style['fontFamily'] !== '') {
-            $css[] = 'font-family:' . (string) $style['fontFamily'];
+        if ($alignContent !== '' && isset($justifyMap[$alignContent])) {
+            $css[] = 'align-content:' . $justifyMap[$alignContent];
+        }
+
+        if ($alignContent === 'STRETCH') {
+            $css[] = 'align-content:stretch';
         }
 
         if (is_numeric($style['fontSize'] ?? null)) {

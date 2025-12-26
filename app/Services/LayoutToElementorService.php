@@ -593,6 +593,10 @@ class LayoutToElementorService
         $widthPercents = [];
         $widthPx = [];
         $totalPx = 0.0;
+        $flexGrow = [];
+        $hasFlexGrow = false;
+
+        $count = count($columns);
 
         foreach ($columns as $i => $col) {
             $style = is_array($col) ? ($col['style'] ?? null) : null;
@@ -601,7 +605,6 @@ class LayoutToElementorService
             $wp = $style !== null && is_numeric($style['widthPercent'] ?? null) ? (float) $style['widthPercent'] : null;
             if ($wp !== null && $wp > 0) {
                 $widthPercents[$i] = $wp;
-                continue;
             }
 
             $px = $style !== null && is_numeric($style['widthPx'] ?? null) ? (float) $style['widthPx'] : null;
@@ -609,31 +612,121 @@ class LayoutToElementorService
                 $widthPx[$i] = $px;
                 $totalPx += $px;
             }
+
+            $fg = $style !== null && is_numeric($style['flexGrow'] ?? null) ? (float) $style['flexGrow'] : null;
+            if ($fg !== null && $fg > 0) {
+                $flexGrow[$i] = $fg;
+                $hasFlexGrow = true;
+            }
         }
 
         if ($widthPercents !== []) {
-            $sum = 0;
-            $lastIndex = null;
+            $sumExplicit = 0;
+            $remainingIndexes = [];
+
             foreach ($columns as $i => $_) {
-                $lastIndex = $i;
                 $raw = $widthPercents[$i] ?? null;
-                if (! is_float($raw)) {
+                if (is_float($raw)) {
+                    $val = (int) round($raw);
+                    $val = max(1, min(100, $val));
+                    $out[$i] = $val;
+                    $sumExplicit += $val;
                     continue;
                 }
-                $val = (int) round($raw);
-                $val = max(1, min(100, $val));
-                $out[$i] = $val;
-                $sum += $val;
+
+                $remainingIndexes[] = $i;
             }
 
-            if ($lastIndex !== null && $sum !== 100 && isset($out[$lastIndex])) {
-                $out[$lastIndex] = max(1, min(100, $out[$lastIndex] + (100 - $sum)));
+            $remaining = max(0, 100 - $sumExplicit);
+            $remCount = count($remainingIndexes);
+            if ($remCount > 0 && $remaining < $remCount) {
+                $needed = $remCount - $remaining;
+                $lastExplicit = null;
+                foreach ($columns as $i => $_) {
+                    if (isset($out[$i])) {
+                        $lastExplicit = $i;
+                    }
+                }
+
+                if ($lastExplicit !== null && isset($out[$lastExplicit]) && $out[$lastExplicit] - $needed >= 1) {
+                    $out[$lastExplicit] -= $needed;
+                    $remaining += $needed;
+                }
+            }
+
+            if ($remCount > 0) {
+                $weights = [];
+                $weightSum = 0.0;
+                foreach ($remainingIndexes as $idx) {
+                    $w = $flexGrow[$idx] ?? 1.0;
+                    $w = $w > 0 ? $w : 1.0;
+                    $weights[$idx] = $w;
+                    $weightSum += $w;
+                }
+
+                $distributed = 0;
+                $lastIdx = $remainingIndexes[$remCount - 1];
+                foreach ($remainingIndexes as $idx) {
+                    $val = $weightSum > 0
+                        ? (int) round(($weights[$idx] / $weightSum) * $remaining)
+                        : (int) round($remaining / $remCount);
+                    $val = max(1, min(100, $val));
+                    $out[$idx] = $val;
+                    $distributed += $val;
+                }
+
+                if (isset($out[$lastIdx]) && $distributed !== $remaining) {
+                    $out[$lastIdx] = max(1, min(100, $out[$lastIdx] + ($remaining - $distributed)));
+                }
+            }
+
+            $sum = array_sum($out);
+            if ($sum !== 100) {
+                $lastIndex = null;
+                foreach ($columns as $i => $_) {
+                    if (isset($out[$i])) {
+                        $lastIndex = $i;
+                    }
+                }
+
+                if ($lastIndex !== null && isset($out[$lastIndex])) {
+                    $out[$lastIndex] = max(1, min(100, $out[$lastIndex] + (100 - $sum)));
+                }
             }
 
             return $out;
         }
 
-        if ($totalPx > 0) {
+        if ($hasFlexGrow) {
+            $weights = [];
+            $weightSum = 0.0;
+            foreach ($columns as $i => $_) {
+                $w = $flexGrow[$i] ?? 1.0;
+                $w = $w > 0 ? $w : 1.0;
+                $weights[$i] = $w;
+                $weightSum += $w;
+            }
+
+            $distributed = 0;
+            $lastIndex = null;
+            foreach ($columns as $i => $_) {
+                $lastIndex = $i;
+                $val = $weightSum > 0
+                    ? (int) round(($weights[$i] / $weightSum) * 100.0)
+                    : (int) round(100.0 / $count);
+                $val = max(1, min(100, $val));
+                $out[$i] = $val;
+                $distributed += $val;
+            }
+
+            if ($lastIndex !== null && isset($out[$lastIndex]) && $distributed !== 100) {
+                $out[$lastIndex] = max(1, min(100, $out[$lastIndex] + (100 - $distributed)));
+            }
+
+            return $out;
+        }
+
+        if ($totalPx > 0 && count($widthPx) === $count) {
             $sum = 0;
             $lastIndex = null;
             foreach ($columns as $i => $_) {

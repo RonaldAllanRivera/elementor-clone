@@ -112,4 +112,52 @@ class LayoutToElementorServiceFixtureTest extends TestCase
         $this->assertSame('text-editor', $widget['widgetType'] ?? null);
         $this->assertSame('center', $widget['settings']['align'] ?? null);
     }
+
+    public function test_classic_export_infers_column_sizes_from_width_percent_and_flex_grow(): void
+    {
+        $service = new LayoutToElementorService();
+
+        $layout = [
+            'type' => 'section',
+            'children' => [
+                [
+                    'type' => 'columns',
+                    'columns' => [
+                        [
+                            'type' => 'container',
+                            'style' => ['widthPercent' => 25],
+                            'children' => [
+                                ['type' => 'text', 'text' => 'Left'],
+                            ],
+                        ],
+                        [
+                            'type' => 'container',
+                            'style' => ['flexGrow' => 1, 'flexBasis' => 0],
+                            'children' => [
+                                ['type' => 'text', 'text' => 'Right'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $payload = $service->export($layout, 'Fixture', LayoutToElementorService::FORMAT_CLASSIC);
+
+        $this->assertIsArray($payload);
+        $section = $payload['content'][0] ?? null;
+        $this->assertIsArray($section);
+        $this->assertSame('section', $section['elType'] ?? null);
+
+        $col1 = $section['elements'][0] ?? null;
+        $col2 = $section['elements'][1] ?? null;
+
+        $this->assertIsArray($col1);
+        $this->assertIsArray($col2);
+        $this->assertSame('column', $col1['elType'] ?? null);
+        $this->assertSame('column', $col2['elType'] ?? null);
+
+        $this->assertSame('25', $col1['settings']['_column_size'] ?? null);
+        $this->assertSame('75', $col2['settings']['_column_size'] ?? null);
+    }
 }

@@ -491,6 +491,82 @@ class DesignFigmaImportTest extends TestCase
         $this->assertSame(0.0, (float) ($hugStyle['flexGrow'] ?? 0));
     }
 
+    public function test_import_from_figma_vertical_auto_layout_fixed_height_child_sets_height_px(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Top',
+                            'layoutMode' => 'VERTICAL',
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 800, 'height' => 240],
+                            'children' => [
+                                [
+                                    'id' => 'row:fixed',
+                                    'type' => 'FRAME',
+                                    'name' => 'Fixed Height Row',
+                                    'layoutMode' => 'NONE',
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 800, 'height' => 60],
+                                    'children' => [
+                                        [
+                                            'id' => 'row:fixed:text',
+                                            'type' => 'TEXT',
+                                            'characters' => 'Fixed Height',
+                                            'style' => ['fontSize' => 12],
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 90, 'height' => 16],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $this->assertSame('section', $design->layout_json['type'] ?? null);
+
+        $fixed = $design->layout_json['children'][0] ?? null;
+        $this->assertIsArray($fixed);
+        $this->assertSame('container', $fixed['type'] ?? null);
+
+        $fixedStyle = $fixed['style'] ?? null;
+        $this->assertIsArray($fixedStyle);
+        $this->assertSame(60.0, (float) ($fixedStyle['heightPx'] ?? 0));
+
+        $this->assertNotNull($design->html);
+        $this->assertStringContainsString('height:60px', (string) $design->html);
+    }
+
     public function test_import_from_figma_infers_input_field_widget_with_background_rectangle_child(): void
     {
         config()->set('services.figma.token', 'test-token');
@@ -1142,5 +1218,250 @@ class DesignFigmaImportTest extends TestCase
         $fillStyle = $cols[0]['style'] ?? null;
         $this->assertIsArray($fillStyle);
         $this->assertSame('STRETCH', $fillStyle['alignSelf'] ?? null);
+    }
+
+    public function test_import_from_figma_infers_gap_and_padding_when_missing_from_auto_layout(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Top',
+                            'layoutMode' => 'VERTICAL',
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 244, 'height' => 80],
+                            'children' => [
+                                [
+                                    'id' => 'row:1',
+                                    'type' => 'FRAME',
+                                    'name' => 'Row',
+                                    'layoutMode' => 'HORIZONTAL',
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 244, 'height' => 40],
+                                    'children' => [
+                                        [
+                                            'id' => 'row:left',
+                                            'type' => 'FRAME',
+                                            'name' => 'Left',
+                                            'layoutMode' => 'NONE',
+                                            'absoluteBoundingBox' => ['x' => 16, 'y' => 10, 'width' => 100, 'height' => 20],
+                                            'children' => [
+                                                [
+                                                    'id' => 'row:left:text',
+                                                    'type' => 'TEXT',
+                                                    'characters' => 'Left',
+                                                    'style' => ['fontSize' => 12],
+                                                    'absoluteBoundingBox' => ['x' => 16, 'y' => 10, 'width' => 40, 'height' => 16],
+                                                ],
+                                            ],
+                                        ],
+                                        [
+                                            'id' => 'row:right',
+                                            'type' => 'FRAME',
+                                            'name' => 'Right',
+                                            'layoutMode' => 'NONE',
+                                            'absoluteBoundingBox' => ['x' => 128, 'y' => 10, 'width' => 100, 'height' => 20],
+                                            'children' => [
+                                                [
+                                                    'id' => 'row:right:text',
+                                                    'type' => 'TEXT',
+                                                    'characters' => 'Right',
+                                                    'style' => ['fontSize' => 12],
+                                                    'absoluteBoundingBox' => ['x' => 128, 'y' => 10, 'width' => 50, 'height' => 16],
+                                                ],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $this->assertSame('section', $design->layout_json['type'] ?? null);
+
+        $row = $design->layout_json['children'][0] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('columns', $row['type'] ?? null);
+
+        $rowStyle = $row['style'] ?? null;
+        $this->assertIsArray($rowStyle);
+
+        $padding = $rowStyle['padding'] ?? null;
+        $this->assertIsArray($padding);
+        $this->assertSame(16.0, (float) ($padding['left'] ?? 0));
+        $this->assertSame(16.0, (float) ($padding['right'] ?? 0));
+        $this->assertSame(10.0, (float) ($padding['top'] ?? 0));
+        $this->assertSame(10.0, (float) ($padding['bottom'] ?? 0));
+
+        $this->assertSame(12.0, (float) ($rowStyle['gap'] ?? 0));
+
+        $cols = $row['columns'] ?? null;
+        $this->assertIsArray($cols);
+        $this->assertCount(2, $cols);
+
+        $leftStyle = $cols[0]['style'] ?? null;
+        $rightStyle = $cols[1]['style'] ?? null;
+        $this->assertIsArray($leftStyle);
+        $this->assertIsArray($rightStyle);
+        $this->assertEqualsWithDelta(50.0, (float) ($leftStyle['widthPercent'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta(50.0, (float) ($rightStyle['widthPercent'] ?? 0), 0.01);
+    }
+
+    public function test_import_from_figma_horizontal_auto_layout_wrap_sets_wrap_and_html_emits_flex_wrap(): void
+    {
+        config()->set('services.figma.token', 'test-token');
+
+        Http::fake([
+            'https://api.figma.com/v1/files/*/nodes*' => Http::response([
+                'nodes' => [
+                    '1:2' => [
+                        'document' => [
+                            'id' => '1:2',
+                            'type' => 'FRAME',
+                            'name' => 'Top',
+                            'layoutMode' => 'VERTICAL',
+                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 320, 'height' => 200],
+                            'children' => [
+                                [
+                                    'id' => 'wrap:row',
+                                    'type' => 'FRAME',
+                                    'name' => 'Wrap Row',
+                                    'layoutMode' => 'HORIZONTAL',
+                                    'layoutWrap' => 'WRAP',
+                                    'counterAxisAlignContent' => 'CENTER',
+                                    'itemSpacing' => 8,
+                                    'counterAxisSpacing' => 14,
+                                    'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 320, 'height' => 80],
+                                    'children' => [
+                                        [
+                                            'id' => 'chip:1',
+                                            'type' => 'FRAME',
+                                            'name' => 'Chip 1',
+                                            'layoutMode' => 'NONE',
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 0, 'width' => 140, 'height' => 32],
+                                            'children' => [
+                                                [
+                                                    'id' => 'chip:1:text',
+                                                    'type' => 'TEXT',
+                                                    'characters' => 'Chip 1',
+                                                    'style' => ['fontSize' => 12],
+                                                    'absoluteBoundingBox' => ['x' => 8, 'y' => 8, 'width' => 40, 'height' => 16],
+                                                ],
+                                            ],
+                                        ],
+                                        [
+                                            'id' => 'chip:2',
+                                            'type' => 'FRAME',
+                                            'name' => 'Chip 2',
+                                            'layoutMode' => 'NONE',
+                                            'absoluteBoundingBox' => ['x' => 148, 'y' => 0, 'width' => 140, 'height' => 32],
+                                            'children' => [
+                                                [
+                                                    'id' => 'chip:2:text',
+                                                    'type' => 'TEXT',
+                                                    'characters' => 'Chip 2',
+                                                    'style' => ['fontSize' => 12],
+                                                    'absoluteBoundingBox' => ['x' => 156, 'y' => 8, 'width' => 40, 'height' => 16],
+                                                ],
+                                            ],
+                                        ],
+                                        [
+                                            'id' => 'chip:3',
+                                            'type' => 'FRAME',
+                                            'name' => 'Chip 3',
+                                            'layoutMode' => 'NONE',
+                                            'absoluteBoundingBox' => ['x' => 0, 'y' => 40, 'width' => 140, 'height' => 32],
+                                            'children' => [
+                                                [
+                                                    'id' => 'chip:3:text',
+                                                    'type' => 'TEXT',
+                                                    'characters' => 'Chip 3',
+                                                    'style' => ['fontSize' => 12],
+                                                    'absoluteBoundingBox' => ['x' => 8, 'y' => 48, 'width' => 40, 'height' => 16],
+                                                ],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'user_id' => $user->id,
+            'name' => 'Test Project',
+            'description' => null,
+        ]);
+
+        $design = Design::create([
+            'project_id' => $project->id,
+            'name' => 'My Design',
+            'description' => null,
+            'figma_url' => 'https://www.figma.com/design/abc123/Test?node-id=1-2',
+            'layout_json' => null,
+            'html' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('designs.importFromFigma', $design, absolute: false))
+            ->assertRedirect(route('designs.show', $design, absolute: false));
+
+        $design->refresh();
+
+        $this->assertSame('section', $design->layout_json['type'] ?? null);
+
+        $row = $design->layout_json['children'][0] ?? null;
+        $this->assertIsArray($row);
+        $this->assertSame('columns', $row['type'] ?? null);
+
+        $style = $row['style'] ?? null;
+        $this->assertIsArray($style);
+        $this->assertTrue((bool) ($style['wrap'] ?? false));
+        $this->assertArrayNotHasKey('gap', $style);
+        $this->assertSame(8.0, (float) ($style['columnGap'] ?? 0));
+        $this->assertSame(14.0, (float) ($style['rowGap'] ?? 0));
+        $this->assertSame('CENTER', $style['alignContent'] ?? null);
+
+        $this->assertIsString($design->html);
+        $this->assertStringContainsString('flex-wrap:wrap', $design->html);
+        $this->assertStringContainsString('column-gap:8px', $design->html);
+        $this->assertStringContainsString('row-gap:14px', $design->html);
+        $this->assertStringContainsString('align-content:center', $design->html);
     }
 }
